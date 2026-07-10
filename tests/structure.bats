@@ -20,14 +20,14 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
 }
 
 @test "both agent files exist" {
-  [ -f "$REPO/agents/pr-reviewer.md" ]
-  [ -f "$REPO/agents/qa-agent.md" ]
+  [ -f "$REPO/plugin/agents/pr-reviewer.md" ]
+  [ -f "$REPO/plugin/agents/qa-agent.md" ]
 }
 
 @test "every agent and skill file has valid frontmatter and no portability blockers" {
   cd "$REPO"
   local found=0 f
-  for f in agents/*.md skills/*/SKILL.md; do
+  for f in plugin/agents/*.md plugin/skills/*/SKILL.md; do
     [ -e "$f" ] || continue
     found=1
     frontmatter_ok "$f"

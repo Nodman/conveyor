@@ -2,7 +2,7 @@
 load helpers/env
 
 @test "plugin manifest is valid JSON with required fields" {
-  run jq -er '.name, .version, .description' "$BATS_TEST_DIRNAME/../.claude-plugin/plugin.json"
+  run jq -er '.name, .version, .description' "$BATS_TEST_DIRNAME/../plugin/.claude-plugin/plugin.json"
   [ "$status" -eq 0 ]
 }
 
