@@ -2,7 +2,8 @@
 name: pr-reviewer
 description: >-
   Top-tier review gate for conveyor-managed PRs. Spawn after a PR opens (give it
-  the PR number) and after every fix round. Reviews the full diff for
+  the PR number); fix rounds return to the same reviewer (resume by name),
+  spawned fresh only if it's gone. Reviews the full diff for
   correctness, repo law (CLAUDE.md/AGENTS.md + project skills), gotcha
   regressions, scope, and test coverage. Clean → approved-by-agent label, no
   manufactured findings. Blocking → one inline review + card back to In

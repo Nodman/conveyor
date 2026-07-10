@@ -37,11 +37,12 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    becomes the squash commit — write it for the git log.
 2. `card.sh move <issue> agentReview`. Spawn **pr-reviewer** (never with a
    cheaper model override). Round 1 = full charter; re-reviews = scoped to
-   the fixes + their comment threads (say so in the spawn prompt).
+   the fixes + their comment threads (say so in the prompt).
 3. Blocking findings: route each to the executor that wrote it (resume by
    name), with path:line + comment id. Executor fixes, pushes, replies in the
-   finding's thread with the fix sha. Card back to agentReview; re-spawn
-   reviewer.
+   finding's thread with the fix sha. Card back to agentReview; route the
+   re-review to the SAME reviewer (resume by name — it keeps round-1
+   context); spawn fresh with the scoped prompt only if it's gone.
 4. Approved → decide QA applicability (your judgment is primary): diff has a
    runtime surface → `card.sh move <issue> qa`, spawn **qa-agent** (PR + issue
    numbers). No runtime surface (docs-only; pure refactor with test coverage;
@@ -58,9 +59,9 @@ Spawned teammates hold terminal panes; too many live at once and new spawns
 fail. Release agents at their **terminal state**, not on idle:
 
 - Release (shutdown_request) an agent once **no in-flight work item can route
-  back to it**: an executor after its findings are fixed+verified and the PR
-  is approved (or its task is ledgered complete); a reviewer after its PR's
-  rotation ends in approval.
+  back to it**: an executor only after its PR clears review AND its findings
+  are fixed+verified (a ledger entry alone is not release — the PR gate is);
+  a reviewer after its PR's rotation ends in approval.
 - Until then it STAYS alive — blocking findings route to the SAME executor,
   and scoped re-reviews reuse the reviewer's round-1 context.
 - Shutting down loses nothing durable: the ledger, report files, and each
