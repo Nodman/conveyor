@@ -126,8 +126,9 @@ conveyor/
   `conveyor.json`.
 - **Model routing** ships as default policy in skills (executors on a capable model,
   pr-reviewer pinned top-tier, exploration on cheap models), overridable in
-  `conveyor.json`. Replaces the user-scoped CLAUDE.md routing table (user deletes that
-  manually — out of scope here).
+  `conveyor.json` (v1: shipped as prose defaults in skills — pr-reviewer pin + executor
+  guidance; config override deferred). Replaces the user-scoped CLAUDE.md routing table
+  (user deletes that manually — out of scope here).
 
 ## Per-repo footprint (created by init)
 
@@ -157,9 +158,11 @@ CLAUDE.md                          # conveyor-managed delimited block only (belo
 
 1. Preflight: `gh` installed + authed, `project` scope, GitHub remote exists,
    superpowers enabled → warn.
-2. Board: find a project linked to the repo. None → create via GraphQL (columns +
-   Priority field). Exists → reconcile: show existing columns, ask the human to map
-   them to canonical states, create missing options (Status options are API-editable).
+2. Board: find a project linked to the repo (v1 deviation: `board-discover.sh --find`
+   matches by project **title** == repo name, not by the actual project↔repo link).
+   None → create via GraphQL (columns + Priority field). Exists → reconcile: show
+   existing columns, ask the human to map them to canonical states, create missing
+   options (Status options are API-editable).
 3. Print manual checklist: the three board automations (not API-settable).
 4. Discover all ids → write `.claude/conveyor.json`.
 5. Scaffold docs dirs, issue template, CLAUDE.md block; run conflict scan; report.
@@ -172,8 +175,8 @@ CLAUDE.md                          # conveyor-managed delimited block only (belo
   Done/Archived; Agent Review card without an open closing PR; In Progress card with
   an open closing PR.
 - New: QA card without an `approved-by-agent` PR; Human Only card without an unblock
-  comment; `conveyor.json` ids stale vs live board; superpowers still enabled; expected
-  labels missing; CLAUDE.md marker block broken.
+  comment; `conveyor.json` ids stale vs live board; superpowers still enabled; CLAUDE.md
+  marker block broken. ("expected labels missing" is a follow-up — not in v1's 8 rules.)
 
 ## Task lifecycle (the generic ritual, encoded in work/executing-tasks skills)
 

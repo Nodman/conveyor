@@ -27,7 +27,8 @@ Human Only · Backlog · Ready for dev · In Progress · Agent Review · QA · D
    and `jq`; warns if the `superpowers` plugin is still enabled (see below).
 2. **Board** — finds a linked project or creates one (`board-create.sh`), or
    reconciles an existing project's columns to the canonical eight
-   (`board-reconcile.sh`, name-matched so item values survive).
+   (`board-reconcile.sh`): you interactively map each existing column to a
+   canonical state, and renames preserve item values (matched by option id).
 3. **Config** — writes `.claude/conveyor.json` (owner, repo, project number,
    field/option ids, labels, policies) and verifies every status key resolved.
 4. **Scaffold** (`scaffold.sh`) — seeds `docs/{specs,plans,gotchas}`, the
@@ -78,7 +79,9 @@ Written by `init`; every script reads it (`CONVEYOR_CONFIG` overrides the path).
   },
   "labels": { "approved": "approved-by-agent", "qaPassed": "qa-passed" },
   "mergePolicy": "solo",           // merge is always the human's
-  "qaSkipPaths": ["docs/**"]       // diffs only touching these skip QA
+  "qaSkipPaths": ["docs/**"]       // advisory input to the orchestrator's QA
+                                   //   decision: a diff touching only these paths
+                                   //   reads as QA n/a (judgment stays primary)
 }
 ```
 

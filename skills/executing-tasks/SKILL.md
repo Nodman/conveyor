@@ -42,10 +42,11 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    name), with path:line + comment id. Executor fixes, pushes, replies in the
    finding's thread with the fix sha. Card back to agentReview; re-spawn
    reviewer.
-4. Approved → decide QA applicability: diff has a runtime surface → 
-   `card.sh move <issue> qa`, spawn **qa-agent** (PR + issue numbers). No
-   runtime surface (docs-only; pure refactor with test coverage) → note
-   "QA: n/a (<reason>)" in the PR body and treat as QA-passed.
+4. Approved → decide QA applicability (your judgment is primary): diff has a
+   runtime surface → `card.sh move <issue> qa`, spawn **qa-agent** (PR + issue
+   numbers). No runtime surface (docs-only; pure refactor with test coverage;
+   or every changed path matches `qaSkipPaths` in `.claude/conveyor.json`) →
+   note "QA: n/a (<reason>)" in the PR body and treat as QA-passed.
 5. QA fail → findings back to executors (same loop as review, then scoped
    re-review, then QA again). QA pass → report merge-ready to the human:
    PR link + one-line summary + labels present. **A human merges. Never

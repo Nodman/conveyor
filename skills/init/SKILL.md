@@ -18,7 +18,10 @@ step on a repo that already has related state.
    - Project found → `board-discover.sh OWNER N`, show its columns, and ask
      the user (AskUserQuestion, one canonical state at a time, only for
      unmatched ones) which existing column maps to each canonical state; then
-     `board-reconcile.sh OWNER N <mapping.json>`.
+     `board-reconcile.sh OWNER N <mapping.json>`. The mapping file is a JSON
+     object of canonical key → EXISTING column name, e.g.
+     `{"backlog": "Todo", "done": "Done"}`; unmapped canonical states get
+     created. Renames preserve item values (matched by option id).
 3. **Manual checklist.** Print — the API cannot set these; the user does them
    in the board UI once: enable "Item added to project → Backlog"; enable
    "Item closed → Done"; ensure "Pull request linked → …" workflows stay
