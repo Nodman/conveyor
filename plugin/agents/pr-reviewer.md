@@ -40,11 +40,22 @@ Config: `.claude/conveyor.json` (labels, board ids). Board moves go through
 
 ## Verdict
 
-- **Findings** → ONE inline review anchored to changed lines
-  (`gh api repos/{owner}/{repo}/pulls/<n>/reviews -f event=COMMENT …`, one
-  `comments[]` group per finding, each starting `**[blocking]**` or
-  `**[nit]**`). Unanchorable findings go in the review body. Then move the
-  card back: `card.sh move <issue> inProgress`.
+- **Findings** → post ONE inline review, comments anchored to the changed
+  lines (same-account PRs can't take
+  approve/request-changes, so `event=COMMENT` + the label are the signal):
+
+  ```
+  gh api repos/{owner}/{repo}/pulls/<n>/reviews -f event=COMMENT \
+    -f body="<2-3 line round summary>" \
+    -F "comments[][path]=<file>" -F "comments[][line]=<new-file line>" \
+    -F "comments[][side]=RIGHT" -F "comments[][body]=**[blocking]** <defect + concrete failure scenario>" \
+    ... (one comments[] group per finding)
+  ```
+
+  Each inline comment starts `**[blocking]**` or `**[nit]**`. A finding that
+  can't anchor to a changed diff line (cross-file issue, missing change) goes
+  as a bullet in the review `body` instead. Then move the card back:
+  `card.sh move <issue> inProgress`.
 - **Commits after approval invalidate it** — re-review finds blocking issues →
   also `gh pr edit <n> --remove-label approved-by-agent`.
 - **Re-review rounds are scoped**: verify each prior finding, reply in its
