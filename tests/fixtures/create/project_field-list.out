@@ -1,0 +1,12 @@
+{
+  "fields": [
+    { "id": "PVTF_title", "name": "Title", "type": "ProjectV2Field" },
+    { "id": "PVTSSF_status", "name": "Status", "type": "ProjectV2SingleSelectField",
+      "options": [
+        { "id": "opt_td", "name": "Todo" },
+        { "id": "opt_ip", "name": "In Progress" },
+        { "id": "opt_dn", "name": "Done" }
+      ] }
+  ],
+  "totalCount": 2
+}
