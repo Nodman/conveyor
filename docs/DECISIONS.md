@@ -1,0 +1,3 @@
+# Decisions
+
+Each entry: `## YYYY-MM-DD — <topic>` followed by bullets — chose X over Y, because…

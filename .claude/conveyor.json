@@ -1,0 +1,64 @@
+{
+  "projectId": "PVT_kwHOAC2mXM4BdDyq",
+  "statusFieldId": "PVTSSF_lAHOAC2mXM4BdDyqzhXoHFY",
+  "status": {
+    "humanOnly": {
+      "name": "Human Only",
+      "id": "f5a70c0f"
+    },
+    "backlog": {
+      "name": "Backlog",
+      "id": "35d66bb8"
+    },
+    "ready": {
+      "name": "Ready for dev",
+      "id": "4cdc98d1"
+    },
+    "inProgress": {
+      "name": "In Progress",
+      "id": "1a33f257"
+    },
+    "agentReview": {
+      "name": "Agent Review",
+      "id": "f6bb9f9d"
+    },
+    "qa": {
+      "name": "QA",
+      "id": "f7da0bcb"
+    },
+    "done": {
+      "name": "Done",
+      "id": "338c7481"
+    },
+    "archived": {
+      "name": "Archived",
+      "id": "64703b5c"
+    }
+  },
+  "priorityFieldId": "PVTSSF_lAHOAC2mXM4BdDyqzhXoHHg",
+  "priority": {
+    "p1": {
+      "name": "P1",
+      "id": "71f59814"
+    },
+    "p2": {
+      "name": "P2",
+      "id": "d966c705"
+    },
+    "p3": {
+      "name": "P3",
+      "id": "cf1ab389"
+    }
+  },
+  "owner": "Nodman",
+  "repo": "conveyor",
+  "project": 6,
+  "labels": {
+    "approved": "approved-by-agent",
+    "qaPassed": "qa-passed"
+  },
+  "mergePolicy": "solo",
+  "qaSkipPaths": [
+    "docs/**"
+  ]
+}
