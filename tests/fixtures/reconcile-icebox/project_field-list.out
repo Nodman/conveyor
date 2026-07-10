@@ -1,0 +1,13 @@
+{
+  "fields": [
+    { "id": "PVTF_title", "name": "Title", "type": "ProjectV2Field" },
+    { "id": "PVTSSF_status", "name": "Status", "type": "ProjectV2SingleSelectField",
+      "options": [
+        { "id": "opt_td", "name": "Todo", "color": "GRAY", "description": "Legacy backlog" },
+        { "id": "opt_ip", "name": "In Progress", "color": "YELLOW", "description": "Being worked" },
+        { "id": "opt_dn", "name": "Done", "color": "GREEN", "description": "Completed" },
+        { "id": "opt_ib", "name": "Icebox", "color": "BLUE", "description": "Parked ideas" }
+      ] }
+  ],
+  "totalCount": 2
+}

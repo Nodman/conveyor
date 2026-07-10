@@ -4,7 +4,12 @@ echo "$*" >> "${GH_LOG:?}"
 
 if [[ "${1:-}" == "api" && "${2:-}" == "graphql" ]]; then
   body="$*"
-  for a in "$@"; do [[ "$a" == "-" ]] && body="$body $(cat)"; done
+  for a in "$@"; do
+    if [[ "$a" == "-" ]]; then
+      stdin="$(cat)"; body="$body $stdin"
+      printf '%s' "$stdin" > "${TMP:-/tmp}/last-graphql.json"
+    fi
+  done
   shopt -s nullglob
   for f in "$GH_FIX"/graphql_*.out; do
     op="$(basename "$f")"; op="${op#graphql_}"; op="${op%.out}"
