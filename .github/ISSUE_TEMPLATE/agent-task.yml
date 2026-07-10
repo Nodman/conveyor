@@ -1,0 +1,31 @@
+name: Agent task
+description: A scoped unit of work for a human or coding agent to pick up.
+title: "[task] "
+projects: ["Nodman/6"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep the brief short and **link docs** rather than pasting spec prose.
+        A PR closes this issue with `Fixes #<n>`.
+  - type: textarea
+    id: goal
+    attributes: { label: Goal, description: "What should be true when this is done (1-3 sentences)." }
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Concrete, checkable outcomes + the gate.
+      placeholder: |
+        - [ ] …
+        - [ ] tests green
+    validations: { required: true }
+  - type: textarea
+    id: context
+    attributes: { label: Relevant docs & files, description: "Link docs/specs, docs/plans, key files." }
+    validations: { required: false }
+  - type: textarea
+    id: notes
+    attributes: { label: Notes / blockers, description: "Open questions, dependencies, blockers." }
+    validations: { required: false }
