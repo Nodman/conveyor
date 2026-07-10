@@ -29,7 +29,8 @@ fi
 bline="$(grep -Fxn "$begin" "$file" | head -1 | cut -d: -f1)"
 eline="$(grep -Fxn "$end" "$file" | head -1 | cut -d: -f1)"
 
-tmp="$(mktemp)"
+tmp="$(mktemp "$file.XXXXXX")"
+trap 'rm -f "$tmp"' EXIT
 {
   head -n "$bline" "$file"
   printf '%s\n' "$content"
