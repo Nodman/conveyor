@@ -68,6 +68,17 @@ load helpers/env
   [ "$status" -eq 0 ]
 }
 
+@test "end marker before begin marker → exit 1, file untouched" {
+  f="$TMP/CLAUDE.md"
+  printf 'a\n<!-- conveyor:end -->\nb\n<!-- conveyor:begin -->\nc\n' > "$f"
+  cp "$f" "$TMP/before"
+  run bash -c "printf 'Z\n' | '$SCRIPTS/claude-block.sh' '$f'"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"out of order"* ]]
+  run cmp "$f" "$TMP/before"
+  [ "$status" -eq 0 ]
+}
+
 @test "missing FILE arg → usage error" {
   run bash -c "printf 'x\n' | '$SCRIPTS/claude-block.sh'"
   [ "$status" -ne 0 ]

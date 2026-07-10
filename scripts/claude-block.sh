@@ -29,6 +29,8 @@ fi
 bline="$(grep -Fxn "$begin" "$file" | head -1 | cut -d: -f1)"
 eline="$(grep -Fxn "$end" "$file" | head -1 | cut -d: -f1)"
 
+[[ "$bline" -lt "$eline" ]] || die "conveyor markers out of order in $file"
+
 tmp="$(mktemp "$file.XXXXXX")"
 trap 'rm -f "$tmp"' EXIT
 {
