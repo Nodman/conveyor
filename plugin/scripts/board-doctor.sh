@@ -97,14 +97,14 @@ if [[ -f CLAUDE.md ]]; then
 fi
 
 # R9: configured labels must exist on the repo.
-labels=$(gh label list -R "$OWNER/$REPO" --json name 2>/dev/null) || labels=ERR
+labels=$(gh label list -R "$OWNER/$REPO" --limit 200 --json name 2>/dev/null) || labels=ERR
 if [[ "$labels" == ERR ]]; then
   echo "WARN: label check failed — re-run"
 else
   for L in "$APPROVED" "$QAPASSED"; do
     present=$(jq --arg L "$L" 'any(.[]?; .name==$L)' <<<"$labels")
     if [[ "$present" != true ]]; then
-      flag "label '$L' missing — fix: gh label create $L --force -R $OWNER/$REPO"
+      flag "label '$L' missing — fix: gh label create '$L' --force -R $OWNER/$REPO"
     fi
   done
 fi

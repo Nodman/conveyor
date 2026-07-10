@@ -109,5 +109,5 @@ setup_drift() { use_cfg; printf '<!-- conveyor:begin -->\n' > "$TMP/CLAUDE.md"; 
   use_cfg
   run_doctor doctor-drift-labels
   [[ "$output" == *"label 'qa-passed' missing"* ]]
-  [[ "$output" == *"gh label create qa-passed --force -R acme/widget"* ]]
+  [[ "$output" == *"gh label create 'qa-passed' --force -R acme/widget"* ]]
 }
