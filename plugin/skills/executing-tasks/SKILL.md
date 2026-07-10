@@ -52,6 +52,23 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    PR link + one-line summary + labels present. **A human merges. Never
    merge, never move a card to Done.**
 
+## Team hygiene
+
+Spawned teammates hold terminal panes; too many live at once and new spawns
+fail. Release agents at their **terminal state**, not on idle:
+
+- Release (shutdown_request) an agent once **no in-flight work item can route
+  back to it**: an executor after its findings are fixed+verified and the PR
+  is approved (or its task is ledgered complete); a reviewer after its PR's
+  rotation ends in approval.
+- Until then it STAYS alive — blocking findings route to the SAME executor,
+  and scoped re-reviews reuse the reviewer's round-1 context.
+- Shutting down loses nothing durable: the ledger, report files, and each
+  finding's text (path:line + comment id + defect) persist — a fresh spawn
+  handles a late fix from those alone.
+- A spawn failing with a pane/fork error usually means this: release finished
+  agents and retry.
+
 ## Along the way
 
 - Human-only blocker (credentials, device, paid account) → post an
