@@ -55,6 +55,45 @@ jq -e '([.status[] | select(.id != null)] | length) == 8
    and ([.priority[]? | select(.id != null)] | length) == 3' <<<"$disc" >/dev/null \
   || fail "discover: expected 8 status + 3 priority ids, got $(jq -c '{s:[.status[]|select(.id!=null)]|length, p:[.priority[]?|select(.id!=null)]|length}' <<<"$disc")"
 
+# 3b. Reconcile round-trip — prove an id-preserving rename.
+#     Simulate a foreign board by renaming "Backlog" → "Todo" (ids preserved via a
+#     direct UpdateStatusOptions), then reconcile {"backlog":"Todo"} back to canonical
+#     and assert the backlog option kept its original id.
+step "reconcile id-preservation"
+fid="$(jq -r '.statusFieldId' <<<"$disc")"
+orig_bl_id="$(jq -r '.status.backlog.id' <<<"$disc")"
+canon_full='[
+  {"key":"humanOnly","name":"Human Only","color":"PINK","description":"Blocked on a human action"},
+  {"key":"backlog","name":"Backlog","color":"GRAY","description":"Not dev-ready"},
+  {"key":"ready","name":"Ready for dev","color":"BLUE","description":"Groomed, pickable"},
+  {"key":"inProgress","name":"In Progress","color":"YELLOW","description":"Agent working"},
+  {"key":"agentReview","name":"Agent Review","color":"ORANGE","description":"PR open, review loop"},
+  {"key":"qa","name":"QA","color":"PURPLE","description":"Review approved, QA on PR branch"},
+  {"key":"done","name":"Done","color":"GREEN","description":"Automation only"},
+  {"key":"archived","name":"Archived","color":"RED","description":"Trash"}
+]'
+rename_opts="$(jq -n --argjson disc "$disc" --argjson canon "$canon_full" \
+  '($disc.status) as $s | $canon | map({
+      id: $s[.key].id,
+      name: (if .key=="backlog" then "Todo" else .name end),
+      color, description })')"
+jq -n --arg fid "$fid" --argjson opts "$rename_opts" '{
+  query: "mutation UpdateStatusOptions($fieldId: ID!, $opts: [ProjectV2SingleSelectFieldOptionInput!]!) { updateProjectV2Field(input: {fieldId: $fieldId, singleSelectOptions: $opts}) { projectV2Field { ... on ProjectV2SingleSelectField { id } } } }",
+  variables: { fieldId: $fid, opts: $opts }
+}' | gh api graphql --input - >/dev/null || fail "simulate foreign board (rename Backlog→Todo)"
+
+mapjson="$(mktemp)"; echo '{"backlog":"Todo"}' > "$mapjson"
+"$ROOT/scripts/board-reconcile.sh" "$owner" "$number" "$mapjson" >/dev/null || fail "board-reconcile.sh"
+rm -f "$mapjson"
+
+disc2="$("$ROOT/scripts/board-discover.sh" "$owner" "$number")" || fail "re-discover after reconcile"
+jq -e '([.status[] | select(.id != null)] | length) == 8' <<<"$disc2" >/dev/null \
+  || fail "reconcile: expected 8 canonical status names, got $(jq -c '[.status[]|select(.id!=null)]|length' <<<"$disc2")"
+new_bl_id="$(jq -r '.status.backlog.id' <<<"$disc2")"
+[[ "$new_bl_id" == "$orig_bl_id" ]] \
+  || fail "reconcile: backlog option id changed across rename ($orig_bl_id → $new_bl_id) — NOT id-preserving"
+step "reconcile OK — backlog id preserved ($orig_bl_id)"
+
 # 4. Clone the scratch repo and drop a composed config in it.
 tmproot="$(mktemp -d)"
 workdir="$tmproot/repo"
