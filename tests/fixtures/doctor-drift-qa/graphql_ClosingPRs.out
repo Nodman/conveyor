@@ -1,0 +1,1 @@
+{ "data": { "repository": { "issue": { "closedByPullRequestsReferences": { "nodes": [ { "state": "OPEN", "labels": { "nodes": [ { "name": "needs-review" } ] } } ] } } } } }
