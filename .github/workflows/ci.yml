@@ -1,0 +1,10 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y bats shellcheck jq
+      - run: shellcheck scripts/*.sh hooks/*.sh tests/helpers/bin/gh tests/live-smoke.sh
+      - run: bats tests

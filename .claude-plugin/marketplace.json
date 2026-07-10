@@ -1,0 +1,7 @@
+{
+  "name": "conveyor-marketplace",
+  "owner": { "name": "Dmytro Burmistrov" },
+  "plugins": [
+    { "name": "conveyor", "source": "./", "description": "GitHub Projects agent delivery pipeline." }
+  ]
+}
