@@ -38,6 +38,7 @@ workflow that evolved in `cooqa-swift`; replaces the `superpowers` plugin.
   action goes there, always with a comment stating the exact unblock action.
 - **Gotchas**: protocol ships as a plugin skill; data stays in `docs/gotchas/<category>.md`
   + README index in each repo. Agent picks or creates the category.
+- **Config format**: JSON (.claude/conveyor.json) — jq-parseable, no yq dependency.
 - **Docs conventions**: exactly four surfaces — `docs/specs/`, `docs/plans/`,
   `docs/DECISIONS.md`, `docs/gotchas/`. No CHANGELOG/PROGRESS/status docs; history =
   squash-commit bodies (≤6-bullet subsystem-tagged PR body rule kept).
@@ -101,7 +102,7 @@ conveyor/
     work/                 # /conveyor:work — pick top Ready-for-dev card, run lifecycle
   agents/
     pr-reviewer.md        # generic review gate, pinned top-tier model, never downgraded;
-                          #   board ids from conveyor.yml; repo law from CLAUDE.md +
+                          #   board ids from conveyor.json; repo law from CLAUDE.md +
                           #   project skills; inline reviews, approved-by-agent label
     qa-agent.md           # generic; verifies acceptance criteria by driving the real
                           #   app via project skills; reports conclusions, not pixels
@@ -109,29 +110,29 @@ conveyor/
   hooks/
     SessionStart          # short: working principles (think-first, simplicity-first,
                           #   surgical changes, goal-driven; from cooqa AGENTS.md) +
-                          #   brainstorm gate + pointer to conveyor.yml and lifecycle
+                          #   brainstorm gate + pointer to conveyor.json and lifecycle
     PreToolUse            # guard on CLAUDE.md/AGENTS.md edits: no status/history
                           #   appended; route to PR body / gotchas / DECISIONS.md
-  scripts/                # bash + gh + GraphQL, parameterized by conveyor.yml:
+  scripts/                # bash + gh + GraphQL, parameterized by conveyor.json:
                           #   board-create, board-reconcile, ids-discover, card-move,
                           #   board-doctor
-  templates/              # agent-task.yml issue template, conveyor.yml, docs scaffold,
+  templates/              # agent-task.yml issue template, conveyor.json, docs scaffold,
                           #   project-skill stubs (run-app, run-tests)
   tests/                  # bats + stubbed gh; opt-in live smoke
   docs/specs/ docs/plans/ docs/gotchas/ docs/DECISIONS.md   # dogfooded
 ```
 
 - **Skills carry process, never ids.** Board ids exist only in the target repo's
-  `conveyor.yml`.
+  `conveyor.json`.
 - **Model routing** ships as default policy in skills (executors on a capable model,
   pr-reviewer pinned top-tier, exploration on cheap models), overridable in
-  `conveyor.yml`. Replaces the user-scoped CLAUDE.md routing table (user deletes that
+  `conveyor.json`. Replaces the user-scoped CLAUDE.md routing table (user deletes that
   manually — out of scope here).
 
 ## Per-repo footprint (created by init)
 
 ```
-.claude/conveyor.yml               # owner, repo, project number, field/option ids,
+.claude/conveyor.json               # owner, repo, project number, field/option ids,
                                    #   labels, model policy, merge policy, optional
                                    #   QA-applicability notes (e.g. "docs/** = no QA")
 .claude/skills/…                   # project skills (maintainer-provided; init generates
@@ -160,7 +161,7 @@ CLAUDE.md                          # conveyor-managed delimited block only (belo
    Priority field). Exists → reconcile: show existing columns, ask the human to map
    them to canonical states, create missing options (Status options are API-editable).
 3. Print manual checklist: the three board automations (not API-settable).
-4. Discover all ids → write `.claude/conveyor.yml`.
+4. Discover all ids → write `.claude/conveyor.json`.
 5. Scaffold docs dirs, issue template, CLAUDE.md block; run conflict scan; report.
 6. Inspect stack → generate project-skill stubs → ask user to review them.
 7. Finish with a doctor run.
@@ -171,7 +172,7 @@ CLAUDE.md                          # conveyor-managed delimited block only (belo
   Done/Archived; Agent Review card without an open closing PR; In Progress card with
   an open closing PR.
 - New: QA card without an `approved-by-agent` PR; Human Only card without an unblock
-  comment; `conveyor.yml` ids stale vs live board; superpowers still enabled; expected
+  comment; `conveyor.json` ids stale vs live board; superpowers still enabled; expected
   labels missing; CLAUDE.md marker block broken.
 
 ## Task lifecycle (the generic ritual, encoded in work/executing-tasks skills)
@@ -192,7 +193,7 @@ CLAUDE.md                          # conveyor-managed delimited block only (belo
 
 - **bats-core** for every script, with a stubbed `gh` on PATH replaying recorded
   fixtures. Coverage: board create from nothing; reconcile against a foreign board
-  (missing/renamed columns); id discovery; conveyor.yml round-trip; every doctor rule
+  (missing/renamed columns); id discovery; conveyor.json round-trip; every doctor rule
   (one failing fixture each); card moves; CLAUDE.md block idempotency.
 - **Opt-in live smoke** (`RUN_LIVE=1`): scratch repo + project via real `gh`, full
   init, assert board shape + config, teardown. Manual, pre-release only.
@@ -216,7 +217,7 @@ CLAUDE.md                          # conveyor-managed delimited block only (belo
 
 ## cooqa-swift migration (after milestone 6)
 
-- Run init → reconcile existing board → `.claude/conveyor.yml`.
+- Run init → reconcile existing board → `.claude/conveyor.json`.
 - Delete all five `.claude/agents/*`:
   - sim-ui-tester → project skill `driving-the-simulator` (bundle id, simulator MCP
     mechanics, log reading) consumed by generic qa-agent.

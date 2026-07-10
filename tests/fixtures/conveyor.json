@@ -1,0 +1,26 @@
+{
+  "owner": "acme",
+  "repo": "widget",
+  "project": 7,
+  "projectId": "PVT_kwTEST",
+  "statusFieldId": "PVTSSF_status",
+  "status": {
+    "humanOnly":   { "name": "Human Only",    "id": "opt_ho" },
+    "backlog":     { "name": "Backlog",       "id": "opt_bl" },
+    "ready":       { "name": "Ready for dev", "id": "opt_rd" },
+    "inProgress":  { "name": "In Progress",   "id": "opt_ip" },
+    "agentReview": { "name": "Agent Review",  "id": "opt_ar" },
+    "qa":          { "name": "QA",            "id": "opt_qa" },
+    "done":        { "name": "Done",          "id": "opt_dn" },
+    "archived":    { "name": "Archived",      "id": "opt_av" }
+  },
+  "priorityFieldId": "PVTSSF_prio",
+  "priority": {
+    "p1": { "name": "P1", "id": "opt_p1" },
+    "p2": { "name": "P2", "id": "opt_p2" },
+    "p3": { "name": "P3", "id": "opt_p3" }
+  },
+  "labels": { "approved": "approved-by-agent", "qaPassed": "qa-passed" },
+  "mergePolicy": "solo",
+  "qaSkipPaths": ["docs/**"]
+}
