@@ -45,12 +45,12 @@ gh repo create "$scratch" --private --add-readme >/dev/null || fail "gh repo cre
 
 # 2. Board (project + Status/Priority option sets).
 step "board-create"
-number="$("$ROOT/scripts/board-create.sh" "$owner" "$scratch" "$scratch")" || fail "board-create.sh"
+number="$("$ROOT/plugin/scripts/board-create.sh" "$owner" "$scratch" "$scratch")" || fail "board-create.sh"
 [[ "$number" =~ ^[0-9]+$ ]] || fail "board-create did not echo a project number (got: $number)"
 
 # 3. Discover — every status + priority option must resolve to an id.
 step "board-discover (#$number)"
-disc="$("$ROOT/scripts/board-discover.sh" "$owner" "$number")" || fail "board-discover.sh"
+disc="$("$ROOT/plugin/scripts/board-discover.sh" "$owner" "$number")" || fail "board-discover.sh"
 jq -e '([.status[] | select(.id != null)] | length) == 8
    and ([.priority[]? | select(.id != null)] | length) == 3' <<<"$disc" >/dev/null \
   || fail "discover: expected 8 status + 3 priority ids, got $(jq -c '{s:[.status[]|select(.id!=null)]|length, p:[.priority[]?|select(.id!=null)]|length}' <<<"$disc")"
@@ -83,10 +83,10 @@ jq -n --arg fid "$fid" --argjson opts "$rename_opts" '{
 }' | gh api graphql --input - >/dev/null || fail "simulate foreign board (rename Backlog→Todo)"
 
 mapjson="$(mktemp)"; echo '{"backlog":"Todo"}' > "$mapjson"
-"$ROOT/scripts/board-reconcile.sh" "$owner" "$number" "$mapjson" >/dev/null || fail "board-reconcile.sh"
+"$ROOT/plugin/scripts/board-reconcile.sh" "$owner" "$number" "$mapjson" >/dev/null || fail "board-reconcile.sh"
 rm -f "$mapjson"
 
-disc2="$("$ROOT/scripts/board-discover.sh" "$owner" "$number")" || fail "re-discover after reconcile"
+disc2="$("$ROOT/plugin/scripts/board-discover.sh" "$owner" "$number")" || fail "re-discover after reconcile"
 jq -e '([.status[] | select(.id != null)] | length) == 8' <<<"$disc2" >/dev/null \
   || fail "reconcile: expected 8 canonical status names, got $(jq -c '[.status[]|select(.id!=null)]|length' <<<"$disc2")"
 new_bl_id="$(jq -r '.status.backlog.id' <<<"$disc2")"
@@ -108,21 +108,21 @@ jq -n --argjson disc "$disc" --arg owner "$owner" --arg repo "$scratch" --argjso
 
 # 5. Scaffold — docs, issue template, labels, CLAUDE.md block (run inside the clone).
 step "scaffold"
-( cd "$workdir" && CONVEYOR_CONFIG="$cfgpath" "$ROOT/scripts/scaffold.sh" ) || fail "scaffold.sh"
+( cd "$workdir" && CONVEYOR_CONFIG="$cfgpath" "$ROOT/plugin/scripts/scaffold.sh" ) || fail "scaffold.sh"
 [[ -f "$workdir/CLAUDE.md" ]] || fail "scaffold left no CLAUDE.md"
 [[ -f "$workdir/.github/ISSUE_TEMPLATE/agent-task.yml" ]] || fail "scaffold left no issue template"
 
 # 6. Doctor — a fresh, consistent board must report no drift.
 step "board-doctor"
-out="$( cd "$workdir" && CONVEYOR_CONFIG="$cfgpath" "$ROOT/scripts/board-doctor.sh" )" \
+out="$( cd "$workdir" && CONVEYOR_CONFIG="$cfgpath" "$ROOT/plugin/scripts/board-doctor.sh" )" \
   || fail "board-doctor exited non-zero: $out"
 grep -q "no drift" <<<"$out" || fail "board-doctor did not report 'no drift': $out"
 
 # 7. claude-block idempotency — re-applying the same block must not change the file.
 step "claude-block idempotency"
 before="$(shasum "$workdir/CLAUDE.md")"
-sed "s|{{OWNER_PROJECT}}|$owner/$number|g" "$ROOT/templates/claude-block.md" \
-  | ( cd "$workdir" && CONVEYOR_CONFIG="$cfgpath" "$ROOT/scripts/claude-block.sh" CLAUDE.md ) \
+sed "s|{{OWNER_PROJECT}}|$owner/$number|g" "$ROOT/plugin/templates/claude-block.md" \
+  | ( cd "$workdir" && CONVEYOR_CONFIG="$cfgpath" "$ROOT/plugin/scripts/claude-block.sh" CLAUDE.md ) \
   || fail "claude-block.sh re-run"
 after="$(shasum "$workdir/CLAUDE.md")"
 [[ "${before%% *}" == "${after%% *}" ]] || fail "claude-block is not idempotent — CLAUDE.md changed on re-run"

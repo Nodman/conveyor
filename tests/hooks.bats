@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 setup() {
-  HOOKS="$BATS_TEST_DIRNAME/../hooks"
+  HOOKS="$BATS_TEST_DIRNAME/../plugin/hooks"
 }
 
 @test "session-start: subagent stdin → exactly {}" {

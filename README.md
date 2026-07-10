@@ -134,7 +134,7 @@ and `doctor` detect an enabled superpowers plugin and warn you to disable it.
 
 ```
 bats tests                                                  # unit + fixture suite
-shellcheck scripts/*.sh hooks/*.sh tests/helpers/bin/gh tests/live-smoke.sh
+shellcheck plugin/scripts/*.sh plugin/hooks/*.sh tests/helpers/bin/gh tests/live-smoke.sh
 RUN_LIVE=1 tests/live-smoke.sh                              # real-gh end-to-end
 ```
 
