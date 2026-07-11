@@ -19,6 +19,9 @@ unchanged.
 ## Decisions (locked)
 
 - Toggle: per-run argument `/conveyor:work auto`. No durable config flag.
+- Every auto run opens with an explicit first-person agreement prompt
+  ("I agree — …"); permissions scaffold happens once, the agreement every
+  run.
 - Spec/plan approval in auto mode: full self-approval via specialized judge
   agents (spec-judge, plan-judge) acting in place of the human.
 - Long-run survival: dispatcher pattern — fresh lead subagent per card; no
@@ -37,15 +40,22 @@ unchanged.
 ### Toggle + consent
 
 - `work` skill parses `auto` argument; auto rules apply to that run only.
-- First auto run per repo: consent gate (AskUserQuestion). On yes →
+- Every auto run starts with an explicit confirmation prompt
+  (AskUserQuestion) whose accept option is a first-person agreement, e.g.
+  "I agree — autonomous run: merge PRs, self-approve specs/plans, file and
+  triage issues without asking me". Decline → offer a plain run. The
+  agreement lands in the session context, which also helps the autoMode
+  classifier recognize the authorization.
+- First auto run per repo additionally scaffolds permissions:
   `scaffold.sh --grant-auto-merge`:
   - `permissions.allow` += `Bash(gh pr merge:*)`
   - `autoMode.allow` += standing rule: during a declared `/conveyor:work
     auto` run, squash-merging PRs carrying `ready-to-merge` is
     pre-authorized; moving cards to Done stays excluded.
   - Idempotent (jq set-difference, same pattern as `--grant-label-perms`).
-- Consent detection: both entries already present → skip the gate. Declined →
-  auto run refuses to start; offer a plain run.
+- Consent detection: both entries already present → skip the scaffold step
+  (the per-run agreement prompt still runs). Declined → auto run refuses to
+  start; offer a plain run.
 
 ### Dispatcher loop (work skill, auto section)
 
@@ -69,7 +79,8 @@ unchanged.
    state.
 
 Dispatcher never orchestrates a card itself; it accumulates only per-card
-reports.
+reports. It reads cards ONLY from Ready for dev and Backlog — Human Only is
+write-only (a parking destination), never a work source.
 
 ### Judge agents (new: `plugin/agents/spec-judge.md`, `plugin/agents/plan-judge.md`)
 
