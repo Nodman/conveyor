@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+echo "codex $*" >> "${RUN_LOG:?}"
+if [[ "${1:-}" == "login" ]]; then echo "Logged in (mock)"; exit 0; fi
+out="" prev=""
+for a in "$@"; do
+  if [[ "$prev" == "-o" ]]; then out="$a"; fi
+  prev="$a"
+done
+if [[ ! -t 0 ]]; then cat >/dev/null; fi
+echo "session id: 0000-mock-session"
+echo "codex mock ran"
+if [[ -n "$out" ]]; then printf 'mock final message\n' > "$out"; fi
