@@ -34,6 +34,10 @@ step on a repo that already has related state.
    Include `"pluginVersion"`: the installed plugin's version
    (`jq -r .version ${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`) — the
    session-start hook compares it to nudge `/conveyor:doctor` after updates.
+   Also settle external-agent visibility: `codex-exec.sh detect` prints
+   `unset` → AskUserQuestion (spawn external agents like codex in a separate
+   window / keep in background) → `codex-exec.sh set-visibility
+   <window|background>`. Prints a terminal mode → skip, nothing to ask.
 5. **Scaffold.** `scaffold.sh` (docs dirs, issue template, labels, CLAUDE.md
    block). Show the diff to the user.
 6. **Label permissions (consent gate).** Conveyor agents apply lifecycle

@@ -44,6 +44,8 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
   grep -qF -- '**Human required:**' "$REPO/plugin/skills/executing-tasks/SKILL.md"
   grep -qF -- '--grant-label-perms' "$REPO/plugin/skills/init/SKILL.md"
   grep -qF -- '--grant-label-perms' "$REPO/plugin/skills/doctor/SKILL.md"
+  grep -qF -- 'set-visibility' "$REPO/plugin/skills/init/SKILL.md"
+  grep -qF -- 'set-visibility' "$REPO/plugin/skills/doctor/SKILL.md"
 }
 
 @test "qa-passed removal-on-invalidation defined for PR and issue" {
@@ -93,4 +95,15 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
   grep -qF -- 'gh pr merge <n> --squash --delete-branch' "$f"
   grep -qF -- 'gh pr checks' "$f"
   grep -qF -- 'declared auto run' "$f"
+}
+
+@test "council skill contract" {
+  f="$REPO/plugin/skills/council/SKILL.md"
+  [ -f "$f" ]
+  grep -qF -- 'codex-exec.sh' "$f"
+  grep -qF -- 'read-only' "$f"
+  grep -qF -- '<runner>-<model>' "$f"
+  grep -qF -- 'session-id' "$f"
+  # resume is always by explicit id (decisive grep last, per bats gotcha)
+  ! grep -qF -- '--last' "$f"
 }
