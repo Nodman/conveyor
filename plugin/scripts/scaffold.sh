@@ -4,8 +4,14 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 need gh; need jq
 
-dry=0
-[[ "${1:-}" == "--dry-run" ]] && dry=1
+dry=0; grant_perms=0
+for a in "$@"; do
+  case "$a" in
+    --dry-run) dry=1 ;;
+    --grant-label-perms) grant_perms=1 ;;
+    *) die "unknown flag: $a" ;;
+  esac
+done
 
 here="$(dirname "$0")"
 tpl="$here/../templates"
@@ -54,4 +60,18 @@ label "$qa_passed" 5319E7 "QA passed on the PR branch"
 say "CLAUDE.md conveyor block"
 if [[ $dry -eq 0 ]]; then
   sed "$sub" "$tpl/claude-block.md" | "$here/claude-block.sh" CLAUDE.md
+fi
+
+# 6. Label permissions — opt-in only (consent handled by the init/doctor skills).
+if [[ $grant_perms -eq 1 ]]; then
+  say "grant label permissions in .claude/settings.json"
+  if [[ $dry -eq 0 ]]; then
+    mkdir -p .claude
+    s=.claude/settings.json
+    [[ -s "$s" ]] || echo '{}' > "$s"
+    tmp=$(mktemp)
+    jq '.permissions.allow = ((.permissions.allow // []) +
+        (["Bash(gh pr edit:*)","Bash(gh issue edit:*)"] - (.permissions.allow // [])))' \
+      "$s" > "$tmp" && mv "$tmp" "$s"
+  fi
 fi
