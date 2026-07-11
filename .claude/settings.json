@@ -9,5 +9,11 @@
   },
   "enabledPlugins": {
     "superpowers@claude-plugins-official": false
+  },
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "Conveyor board lifecycle writes to this project's own GitHub repo are pre-authorized by the user's standing workflow (CLAUDE.md): gh issue create/comment/edit, gh pr create/comment/edit, label add/remove, board card moves via gh project or card.sh, and pushing feature branches. This includes filing backlog issues for out-of-scope findings discovered during a task — the workflow mandates it. Merging PRs and moving cards to Done remain human-only and are NOT covered."
+    ]
   }
 }
