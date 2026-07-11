@@ -111,3 +111,22 @@ setup_drift() { use_cfg; printf '<!-- conveyor:begin -->\n' > "$TMP/CLAUDE.md"; 
   [[ "$output" == *"label 'qa-passed' missing"* ]]
   [[ "$output" == *"gh label create 'qa-passed' --force -R acme/widget"* ]]
 }
+
+# ---- pluginVersion stamp ---------------------------------------------------
+
+@test "clean run stamps pluginVersion and preserves other keys" {
+  use_cfg
+  before_owner="$(jq -r .owner "$TMP/.claude/conveyor.json")"
+  run_doctor doctor-clean
+  [ "$status" -eq 0 ]
+  v="$(jq -r .version "$BATS_TEST_DIRNAME/../plugin/.claude-plugin/plugin.json")"
+  [ "$(jq -r .pluginVersion "$TMP/.claude/conveyor.json")" = "$v" ]
+  [ "$(jq -r .owner "$TMP/.claude/conveyor.json")" = "$before_owner" ]
+}
+
+@test "drift run leaves pluginVersion untouched" {
+  setup_drift
+  run_doctor doctor-drift
+  [ "$status" -eq 1 ]
+  [ "$(jq -r '.pluginVersion // "absent"' "$TMP/.claude/conveyor.json")" = "absent" ]
+}
