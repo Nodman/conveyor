@@ -8,7 +8,7 @@ if [[ "${1:-}" == "--find" ]]; then
   owner="$2"; repo="$3"
   # shellcheck disable=SC2016  # $o/$r are GraphQL variables, not shell expansions
   num=$(gh api graphql \
-    -f query='query LinkedProject($o:String!,$r:String!){repository(owner:$o,name:$r){projectsV2(first:1){nodes{number}}}}' \
+    -f query='query LinkedProject($o:String!,$r:String!){repository(owner:$o,name:$r){projectsV2(first:1,query:"is:open"){nodes{number}}}}' \
     -f o="$owner" -f r="$repo" 2>/dev/null \
     | jq -r '.data.repository.projectsV2.nodes[0].number // empty' 2>/dev/null) || num=""
   if [[ -n "$num" ]]; then echo "$num"; exit 0; fi
