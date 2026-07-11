@@ -55,6 +55,9 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    re-review, then QA again). QA pass → report merge-ready to the human:
    PR link + one-line summary + labels present. **A human merges. Never
    merge, never move a card to Done.**
+6. **Commits after a QA pass invalidate it** — new commits pushed after
+   `qa-passed` → remove it (`gh pr edit <n> --remove-label qa-passed` and
+   `gh issue edit <issue> --remove-label qa-passed`) and re-run QA.
 
 ## Human-required follow-ups
 
