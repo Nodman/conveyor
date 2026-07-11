@@ -18,7 +18,13 @@ unchanged.
 
 ## Decisions (locked)
 
-- Toggle: per-run argument `/conveyor:work auto`. No durable config flag.
+Amended 2026-07-11: auto mode split into its own skill (was: an `auto`
+argument to /conveyor:work) — merge prose must be absent from plain-run
+context.
+
+- Toggle: the dedicated `/conveyor:auto` skill is the per-run entry point —
+  invoking it IS the toggle; the `work` skill stays merge-free. No durable
+  config flag.
 - Every auto run opens with an explicit first-person agreement prompt
   ("I agree — …"); permissions scaffold happens once, the agreement every
   run.
@@ -39,7 +45,8 @@ unchanged.
 
 ### Toggle + consent
 
-- `work` skill parses `auto` argument; auto rules apply to that run only.
+- `/conveyor:auto` is a dedicated skill; invoking it starts an auto run.
+  Merge-authorizing prose lives only there, absent from the `work` skill.
 - Every auto run starts with an explicit confirmation prompt
   (AskUserQuestion) whose accept option is a first-person agreement, e.g.
   "I agree — autonomous run: merge PRs, self-approve specs/plans, file and
@@ -49,8 +56,8 @@ unchanged.
 - First auto run per repo additionally scaffolds permissions:
   `scaffold.sh --grant-auto-merge`:
   - `permissions.allow` += `Bash(gh pr merge:*)`
-  - `autoMode.allow` += standing rule: during a declared `/conveyor:work
-    auto` run, squash-merging PRs carrying `ready-to-merge` is
+  - `autoMode.allow` += standing rule: during a declared `/conveyor:auto`
+    run, squash-merging PRs carrying `ready-to-merge` is
     pre-authorized; moving cards to Done stays excluded.
   - Idempotent (jq set-difference, same pattern as `--grant-label-perms`).
 - Consent detection: both entries already present → skip the scaffold step

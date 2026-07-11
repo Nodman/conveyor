@@ -102,7 +102,7 @@ if [[ $grant_auto -eq 1 ]]; then
     s=.claude/settings.json
     [[ -s "$s" ]] || echo '{}' > "$s"
     tmp=$(mktemp)
-    rule="During a declared '/conveyor:work auto' run the user has explicitly agreed, via the per-run prompt, to autonomous operation: squash-merging PRs that carry the ready-to-merge label (gh pr merge --squash --delete-branch) and judge-agent self-approval of specs and plans are pre-authorized. Outside a declared auto run, merging PRs stays human-only. Moving cards to Done is never agent-performed — board automation owns it."
+    rule="During a declared '/conveyor:auto' run the user has explicitly agreed, via the per-run prompt, to autonomous operation: squash-merging PRs that carry the ready-to-merge label (gh pr merge --squash --delete-branch) and judge-agent self-approval of specs and plans are pre-authorized. Outside a declared auto run, merging PRs stays human-only. Moving cards to Done is never agent-performed — board automation owns it."
     jq --arg rule "$rule" '.permissions.allow = ((.permissions.allow // []) +
         (["Bash(gh pr merge:*)"] - (.permissions.allow // [])))
       | .autoMode.allow = ((.autoMode.allow // []) +

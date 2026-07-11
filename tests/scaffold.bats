@@ -185,7 +185,7 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   [ "$(jq '.permissions.allow | index("Bash(gh pr merge:*)")' "$s")" != "null" ]
   [ "$(jq '.autoMode.allow | length' "$s")" -eq 2 ]
   [ "$(jq -r '.autoMode.allow[0]' "$s")" = '$defaults' ]
-  grep -q 'conveyor:work auto' "$s"
+  grep -q 'conveyor:auto' "$s"
   grep -q 'ready-to-merge' "$s"
 }
 

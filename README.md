@@ -3,7 +3,7 @@
 A Claude Code plugin that turns any GitHub-connected repo into an agent-driven
 delivery pipeline. One board, one lifecycle: **brainstorm → spec → plan → TDD
 execution → PR review → QA → human merge** (or autonomous merge in a
-`/conveyor:work auto` run). Install once, use in any repo — the
+`/conveyor:auto` run). Install once, use in any repo — the
 per-repo footprint is config + docs, no stack code shipped.
 
 Board columns, in order:
@@ -114,7 +114,7 @@ The definition of *done* for one task (`/conveyor:work` runs the loop):
 
 ## Autonomous mode
 
-`/conveyor:work auto` drains the board without human gates, for this run only:
+`/conveyor:auto` drains the board without human gates, for this run only:
 
 - Every run opens with an explicit agreement prompt ("I agree — autonomous
   run: …"); first run also scaffolds `scaffold.sh --grant-auto-merge`
