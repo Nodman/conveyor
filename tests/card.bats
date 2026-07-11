@@ -27,8 +27,7 @@ use_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/conveyo
   [ "$output" = "moved #41 → In Progress" ]
   run grep -F "item-edit" "$GH_LOG"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"--single-select-option-id opt_ip"* ]]
-  [[ "$output" == *"--id PVTI_41"* ]]
+  [[ "$output" == *"--single-select-option-id opt_ip"* && "$output" == *"--id PVTI_41"* ]]
 }
 
 @test "move with unknown status key fails" {

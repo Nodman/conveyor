@@ -15,8 +15,7 @@ setup() {
   [ "$status" -eq 0 ]
   echo "$output" | jq -e . >/dev/null
   ctx="$(echo "$output" | jq -r '.hookSpecificOutput.additionalContext')"
-  [[ "$ctx" == *"working principles"* ]]
-  [[ "$ctx" == *"/conveyor:work"* ]]
+  [[ "$ctx" == *"working principles"* && "$ctx" == *"/conveyor:work"* ]]
 }
 
 @test "session-start: malformed stdin → exit 0, still emits context" {
