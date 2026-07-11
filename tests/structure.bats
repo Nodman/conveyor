@@ -75,3 +75,13 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
   grep -qF -- '**[spec-judge]**' "$REPO/plugin/agents/spec-judge.md"
   grep -qF -- '**[plan-judge]**' "$REPO/plugin/agents/plan-judge.md"
 }
+
+@test "work skill defines the auto-mode contract" {
+  f="$REPO/plugin/skills/work/SKILL.md"
+  grep -qF -- 'I agree' "$f"
+  grep -qF -- '--grant-auto-merge' "$f"
+  grep -qF -- 'never a work source' "$f"
+  grep -qF -- '3 consecutive' "$f"
+  grep -qF -- 'spec-judge' "$f"
+  grep -qF -- 'plan-judge' "$f"
+}
