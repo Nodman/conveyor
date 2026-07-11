@@ -70,8 +70,11 @@ if [[ $grant_perms -eq 1 ]]; then
     s=.claude/settings.json
     [[ -s "$s" ]] || echo '{}' > "$s"
     tmp=$(mktemp)
-    jq '.permissions.allow = ((.permissions.allow // []) +
-        (["Bash(gh pr edit:*)","Bash(gh issue edit:*)","Bash(gh issue comment:*)","Bash(gh issue create:*)"] - (.permissions.allow // [])))' \
+    rule="Conveyor board lifecycle writes to this project's own GitHub repo are pre-authorized by the user's standing workflow (CLAUDE.md): gh issue create/comment/edit, gh pr create/comment/edit, label add/remove, board card moves via gh project or card.sh, and pushing feature branches. This includes filing backlog issues for out-of-scope findings discovered during a task — the workflow mandates it. Merging PRs and moving cards to Done remain human-only and are NOT covered."
+    jq --arg rule "$rule" '.permissions.allow = ((.permissions.allow // []) +
+        (["Bash(gh pr edit:*)","Bash(gh issue edit:*)","Bash(gh issue comment:*)","Bash(gh issue create:*)"] - (.permissions.allow // [])))
+      | .autoMode.allow = ((.autoMode.allow // []) +
+        (["$defaults", $rule] - (.autoMode.allow // [])))' \
       "$s" > "$tmp" && mv "$tmp" "$s"
   fi
 fi

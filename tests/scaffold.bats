@@ -88,6 +88,39 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   [ "$(jq -r '.permissions.allow[3]' "$s")" = "Bash(gh issue create:*)" ]
 }
 
+@test "--grant-label-perms installs the autoMode lifecycle allow rule" {
+  seed_cfg
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms"
+  [ "$status" -eq 0 ]
+  s="$TMP/.claude/settings.json"
+  [ "$(jq '.autoMode.allow | length' "$s")" -eq 2 ]
+  [ "$(jq -r '.autoMode.allow[0]' "$s")" = '$defaults' ]
+  grep -q 'pre-authorized by the' "$s"
+  grep -q 'Merging PRs and moving cards to Done remain human-only' "$s"
+}
+
+@test "--grant-label-perms autoMode rule is idempotent — re-run adds no duplicates" {
+  seed_cfg
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms"
+  [ "$status" -eq 0 ]
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms"
+  [ "$status" -eq 0 ]
+  [ "$(jq '.autoMode.allow | length' "$TMP/.claude/settings.json")" -eq 2 ]
+}
+
+@test "--grant-label-perms preserves pre-existing autoMode entries and other settings" {
+  seed_cfg
+  printf '{"autoMode":{"allow":["custom rule one"]},"env":{"BAR":"2"}}' \
+    > "$TMP/.claude/settings.json"
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms"
+  [ "$status" -eq 0 ]
+  s="$TMP/.claude/settings.json"
+  [ "$(jq '.autoMode.allow | length' "$s")" -eq 3 ]
+  [ "$(jq -r '.autoMode.allow[0]' "$s")" = "custom rule one" ]
+  [ "$(jq -r '.autoMode.allow[1]' "$s")" = '$defaults' ]
+  [ "$(jq -r '.env.BAR' "$s")" = "2" ]
+}
+
 @test "without --grant-label-perms settings.json is untouched" {
   seed_cfg
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh'"
