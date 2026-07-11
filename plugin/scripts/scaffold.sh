@@ -94,7 +94,7 @@ if [[ $grant_perms -eq 1 ]]; then
   fi
 fi
 
-# 7. Auto-merge permissions — opt-in only (consent = per-run agreement prompt in the work skill).
+# 8. Auto-merge permissions — opt-in only (consent = per-run agreement prompt in the work skill).
 if [[ $grant_auto -eq 1 ]]; then
   say "grant auto-merge permissions in .claude/settings.json"
   if [[ $dry -eq 0 ]]; then
