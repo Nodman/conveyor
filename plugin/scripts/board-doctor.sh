@@ -57,7 +57,7 @@ while IFS=$'\t' read -r n status; do
       "$S_AR"|"$S_IP"|"$S_QA")
         nodes=$(closing_nodes "$n")
         if [[ "$nodes" == ERR ]]; then
-          echo "WARN: #$n PR-link check failed — re-run"
+          echo "WARN: #$n PR-link check failed — re-run" >&2
         else
           opencount=$(jq '[.[] | select(.state=="OPEN")] | length' <<<"$nodes")
           approved=$(jq --arg L "$APPROVED" '[.[] | select(.state=="OPEN") | .labels.nodes[]?.name] | index($L) != null' <<<"$nodes")
@@ -76,7 +76,7 @@ while IFS=$'\t' read -r n status; do
         fi ;;
       "$S_HO")
         case "$(has_unblock "$n")" in
-          ERR) echo "WARN: #$n unblock-comment check failed — re-run" ;;
+          ERR) echo "WARN: #$n unblock-comment check failed — re-run" >&2 ;;
           no)  flag "#$n in $S_HO has no Unblock: comment" ;;
         esac ;;
     esac
@@ -96,7 +96,7 @@ if [[ -n "$discover" ]]; then
     if [[ "$present" != true ]]; then flag "config priority '$key' id $id absent from live board"; fi
   done < <(jq -r '.priority | to_entries[]? | "\(.key)\t\(.value.id)"' "$CONVEYOR_CONFIG")
 else
-  echo "WARN: config staleness check failed — re-run"
+  echo "WARN: config staleness check failed — re-run" >&2
 fi
 
 # R8: CLAUDE.md marker block — both markers or neither; one alone is broken.
@@ -111,7 +111,7 @@ fi
 # R9: configured labels must exist on the repo.
 labels=$(gh label list -R "$OWNER/$REPO" --limit 200 --json name 2>/dev/null) || labels=ERR
 if [[ "$labels" == ERR ]]; then
-  echo "WARN: label check failed — re-run"
+  echo "WARN: label check failed — re-run" >&2
 else
   for L in "$APPROVED" "$QAPASSED"; do
     present=$(jq --arg L "$L" 'any(.[]?; .name==$L)' <<<"$labels")
