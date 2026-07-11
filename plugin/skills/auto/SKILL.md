@@ -24,7 +24,6 @@ afterwards is human-gated again.
    first (P1 > P2 > P3; unset = P2); ties → oldest.
 4. **Dispatch loop.** You are the dispatcher: never orchestrate a card
    yourself, keep only per-card reports in context.
-   - `/conveyor:doctor` once at start.
    - Pick the top Ready-for-dev card (rules in step 3) → spawn a FRESH lead
      subagent for that one card. Give it: the issue number, the
      conveyor:executing-tasks skill by name, the sentence "This is a
