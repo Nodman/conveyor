@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=plugin/scripts/lib.sh
 . "$SCRIPT_DIR/lib.sh"
 
 usage() {
@@ -38,7 +39,7 @@ set_visibility() {
 
 session_id() {
   [[ -f "${1:-}" ]] || die "no log file: ${1:-}"
-  grep -m1 '^session id: ' "$1" | awk '{print $3}'
+  grep -m1 '^session id: ' "$1" | awk '{print $3}' | grep . || die "no session id in $1"
 }
 
 run_codex() {
