@@ -103,7 +103,7 @@ cfgpath="$workdir/.claude/conveyor.json"
 mkdir -p "$workdir/.claude"
 jq -n --argjson disc "$disc" --arg owner "$owner" --arg repo "$scratch" --argjson number "$number" \
   '$disc + {owner:$owner, repo:$repo, project:$number,
-            labels:{approved:"approved-by-agent", qaPassed:"qa-passed"},
+            labels:{approved:"approved-by-agent", qaPassed:"qa-passed", readyToMerge:"ready-to-merge"},
             mergePolicy:"solo", qaSkipPaths:["docs/**"]}' > "$cfgpath" || fail "compose config"
 
 # 5. Scaffold — docs, issue template, labels, CLAUDE.md block (run inside the clone).

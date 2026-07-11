@@ -20,6 +20,7 @@ owner="$(cfg .owner)"
 project="$(cfg .project)"
 approved="$(cfg .labels.approved)"
 qa_passed="$(cfg .labels.qaPassed)"
+ready_to_merge="$(cfg_or .labels.readyToMerge ready-to-merge)"
 sub="s|{{OWNER_PROJECT}}|$owner/$project|g"
 
 say() { if [[ $dry -eq 1 ]]; then echo "scaffold: [dry-run] $*"; else echo "scaffold: $*"; fi; }
@@ -55,6 +56,7 @@ label() { # name color desc
 }
 label "$approved" 0E8A16 "PR approved by the review agent"
 label "$qa_passed" 5319E7 "QA passed on the PR branch"
+label "$ready_to_merge" FBCA04 "All agent gates passed; awaiting human merge"
 
 # 5. CLAUDE.md conveyor block (idempotent via claude-block.sh).
 say "CLAUDE.md conveyor block"

@@ -20,7 +20,7 @@
     "p2": { "name": "P2", "id": "opt_p2" },
     "p3": { "name": "P3", "id": "opt_p3" }
   },
-  "labels": { "approved": "approved-by-agent", "qaPassed": "qa-passed" },
+  "labels": { "approved": "approved-by-agent", "qaPassed": "qa-passed", "readyToMerge": "ready-to-merge" },
   "mergePolicy": "solo",
   "qaSkipPaths": ["docs/**"]
 }

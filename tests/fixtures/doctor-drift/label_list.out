@@ -1,1 +1,1 @@
-[{ "name": "approved-by-agent" }, { "name": "qa-passed" }]
+[{ "name": "approved-by-agent" }, { "name": "qa-passed" }, { "name": "ready-to-merge" }]

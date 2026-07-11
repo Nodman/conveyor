@@ -32,7 +32,8 @@ Human Only · Backlog · Ready for dev · In Progress · Agent Review · QA · D
 3. **Config** — writes `.claude/conveyor.json` (owner, repo, project number,
    field/option ids, labels, policies) and verifies every status key resolved.
 4. **Scaffold** (`scaffold.sh`) — seeds `docs/{specs,plans,gotchas}`, the
-   `agent-task` issue template, the `approved-by-agent` / `qa-passed` labels, and
+   `agent-task` issue template, the `approved-by-agent` / `qa-passed` /
+   `ready-to-merge` labels, and
    a delimited conveyor block in `CLAUDE.md`.
 5. **Project skills** — generates `.claude/skills/running-the-app` and
    `running-tests` stubs from the detected stack, leaving `<!-- FILL -->` markers
@@ -77,7 +78,7 @@ Written by `init`; every script reads it (`CONVEYOR_CONFIG` overrides the path).
     "p2": { "name": "P2", "id": "opt_p2" },
     "p3": { "name": "P3", "id": "opt_p3" }
   },
-  "labels": { "approved": "approved-by-agent", "qaPassed": "qa-passed" },
+  "labels": { "approved": "approved-by-agent", "qaPassed": "qa-passed", "readyToMerge": "ready-to-merge" },
   "mergePolicy": "solo",           // merge is always the human's
   "qaSkipPaths": ["docs/**"]       // advisory input to the orchestrator's QA
                                    //   decision: a diff touching only these paths
@@ -104,7 +105,8 @@ The definition of *done* for one task (`/conveyor:work` runs the loop):
 7. **qa-agent** verifies the acceptance criteria on the PR branch (skipped for
    docs-only / `qaSkipPaths` diffs). Pass → `qa-passed`, card stays in **QA**
    as the merge-ready waiting room; fail → back to In Progress.
-8. The agent reports the PR as merge-ready. **A human merges** — the merge closes
+8. All gates passed → the orchestrator applies `ready-to-merge` to the PR + issue
+   and reports the PR as merge-ready. **A human merges** — the merge closes
    the issue and automation moves the card to **Done**. Agents never merge and
    never set Done by hand.
 

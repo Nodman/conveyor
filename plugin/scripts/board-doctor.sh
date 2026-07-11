@@ -6,6 +6,7 @@ need gh; need jq
 
 OWNER="$(cfg .owner)"; REPO="$(cfg .repo)"; PROJECT="$(cfg .project)"
 APPROVED="$(cfg '.labels.approved')"; QAPASSED="$(cfg '.labels.qaPassed')"
+READYTOMERGE="$(cfg_or '.labels.readyToMerge' ready-to-merge)"
 HERE="$(dirname "${BASH_SOURCE[0]}")"
 
 S_HO="$(status_name humanOnly)"; S_IP="$(status_name inProgress)"
@@ -114,12 +115,18 @@ if [[ -f CLAUDE.md ]]; then
   fi
 fi
 
+# R9b: pre-0.1.13 configs lack the readyToMerge label key — the scripts default it,
+# but flag it so the config is brought current.
+if [[ -z "$(jq -r '.labels.readyToMerge // empty' "$CONVEYOR_CONFIG")" ]]; then
+  flag "config .labels.readyToMerge missing — fix: jq '.labels.readyToMerge = \"ready-to-merge\"' $CONVEYOR_CONFIG > tmp && mv tmp $CONVEYOR_CONFIG"
+fi
+
 # R9: configured labels must exist on the repo.
 labels=$(gh label list -R "$OWNER/$REPO" --limit 200 --json name 2>/dev/null) || labels=ERR
 if [[ "$labels" == ERR ]]; then
   echo "WARN: label check failed — re-run" >&2
 else
-  for L in "$APPROVED" "$QAPASSED"; do
+  for L in "$APPROVED" "$QAPASSED" "$READYTOMERGE"; do
     present=$(jq --arg L "$L" 'any(.[]?; .name==$L)' <<<"$labels")
     if [[ "$present" != true ]]; then
       flag "label '$L' missing — fix: gh label create '$L' --force -R $OWNER/$REPO"

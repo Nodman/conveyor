@@ -17,7 +17,15 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   ! grep -qi 'Lane' "$TMP/.github/ISSUE_TEMPLATE/agent-task.yml"
   grep -q 'acme/7' "$TMP/CLAUDE.md"
   grep -q 'conveyor:begin' "$TMP/CLAUDE.md"
-  [ "$(grep -c 'label create' "$GH_LOG")" -eq 2 ]
+  [ "$(grep -c 'label create ready-to-merge' "$GH_LOG")" -eq 1 ]
+  [ "$(grep -c 'label create' "$GH_LOG")" -eq 3 ]
+}
+
+@test "pre-0.1.13 config (no readyToMerge) — scaffold creates the label and grants perms" {
+  cp "$BATS_TEST_DIRNAME/fixtures/conveyor-pre-readytomerge.json" "$TMP/.claude/conveyor.json"
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'label create ready-to-merge' "$GH_LOG")" -eq 1 ]
 }
 
 @test "pre-existing docs/DECISIONS.md is not overwritten" {

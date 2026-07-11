@@ -1,66 +1,64 @@
 {
-  "projectId": "PVT_kwHOAC2mXM4BdDyq",
-  "statusFieldId": "PVTSSF_lAHOAC2mXM4BdDyqzhXoHFY",
+  "owner": "acme",
+  "repo": "widget",
+  "project": 7,
+  "projectId": "PVT_kwTEST",
+  "statusFieldId": "PVTSSF_status",
   "status": {
     "humanOnly": {
       "name": "Human Only",
-      "id": "f5a70c0f"
+      "id": "opt_ho"
     },
     "backlog": {
       "name": "Backlog",
-      "id": "35d66bb8"
+      "id": "opt_bl"
     },
     "ready": {
       "name": "Ready for dev",
-      "id": "4cdc98d1"
+      "id": "opt_rd"
     },
     "inProgress": {
       "name": "In Progress",
-      "id": "1a33f257"
+      "id": "opt_ip"
     },
     "agentReview": {
       "name": "Agent Review",
-      "id": "f6bb9f9d"
+      "id": "opt_ar"
     },
     "qa": {
       "name": "QA",
-      "id": "f7da0bcb"
+      "id": "opt_qa"
     },
     "done": {
       "name": "Done",
-      "id": "338c7481"
+      "id": "opt_dn"
     },
     "archived": {
       "name": "Archived",
-      "id": "64703b5c"
+      "id": "opt_av"
     }
   },
-  "priorityFieldId": "PVTSSF_lAHOAC2mXM4BdDyqzhXoHHg",
+  "priorityFieldId": "PVTSSF_prio",
   "priority": {
     "p1": {
       "name": "P1",
-      "id": "71f59814"
+      "id": "opt_p1"
     },
     "p2": {
       "name": "P2",
-      "id": "d966c705"
+      "id": "opt_p2"
     },
     "p3": {
       "name": "P3",
-      "id": "cf1ab389"
+      "id": "opt_p3"
     }
   },
-  "owner": "Nodman",
-  "repo": "conveyor",
-  "project": 6,
   "labels": {
     "approved": "approved-by-agent",
-    "qaPassed": "qa-passed",
-    "readyToMerge": "ready-to-merge"
+    "qaPassed": "qa-passed"
   },
   "mergePolicy": "solo",
   "qaSkipPaths": [
     "docs/**"
-  ],
-  "pluginVersion": "0.1.11"
+  ]
 }

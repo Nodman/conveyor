@@ -14,6 +14,12 @@ cfg() {
   jq -er "$1" "$CONVEYOR_CONFIG" || die "config key not found: $1"
 }
 
+cfg_or() { # $1=jq filter $2=fallback — like cfg but yields $2 when the key is absent/null
+  [[ -f "$CONVEYOR_CONFIG" ]] || die "no $CONVEYOR_CONFIG — run /conveyor:init first"
+  local v; v="$(jq -r "$1 // empty" "$CONVEYOR_CONFIG")"
+  if [[ -n "$v" ]]; then printf '%s\n' "$v"; else printf '%s\n' "$2"; fi
+}
+
 status_name() { cfg ".status.$1.name"; }
 status_id()   { cfg ".status.$1.id"; }
 

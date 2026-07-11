@@ -143,6 +143,19 @@ setup_drift() { use_cfg; printf '<!-- conveyor:begin -->\n' > "$TMP/CLAUDE.md"; 
   [[ "$output" == *"label 'qa-passed' missing"* && "$output" == *"gh label create 'qa-passed' --force -R acme/widget"* ]]
 }
 
+@test "R9 missing ready-to-merge label with fix command" {
+  use_cfg
+  run_doctor doctor-drift-labels
+  [[ "$output" == *"label 'ready-to-merge' missing"* && "$output" == *"gh label create 'ready-to-merge' --force -R acme/widget"* ]]
+}
+
+@test "pre-0.1.13 config (no readyToMerge) — doctor runs all rules and flags the missing config key" {
+  cp "$BATS_TEST_DIRNAME/fixtures/conveyor-pre-readytomerge.json" "$TMP/.claude/conveyor.json"
+  run_doctor doctor-clean
+  [ "$status" -eq 1 ]
+  [[ "$output" != *"config key not found"* && "$output" == *"config .labels.readyToMerge missing"* ]]
+}
+
 # ---- pluginVersion stamp ---------------------------------------------------
 
 @test "clean run stamps pluginVersion and preserves other keys" {
