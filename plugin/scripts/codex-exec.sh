@@ -41,10 +41,57 @@ session_id() {
   grep -m1 '^session id: ' "$1" | awk '{print $3}'
 }
 
+run_codex() {
+  local name="" model="" out="" resume="" prompt_file="" vis=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --name) name="$2"; shift 2 ;;
+      --model) model="$2"; shift 2 ;;
+      --out) out="$2"; shift 2 ;;
+      --resume) resume="$2"; shift 2 ;;
+      --prompt-file) prompt_file="$2"; shift 2 ;;
+      --visibility) vis="$2"; shift 2 ;;
+      *) usage ;;
+    esac
+  done
+  [[ -n "$name" && -n "$model" && -n "$out" && -n "$prompt_file" ]] || usage
+  [[ -f "$prompt_file" ]] || die "no prompt file: $prompt_file"
+  case "$out$prompt_file" in *" "*) die "paths must not contain spaces" ;; esac
+  if [[ -z "$vis" ]]; then vis="$(detect)"; fi
+  if [[ "$vis" == "unset" ]]; then vis=background; fi
+
+  local log="${out%.md}.log" sentinel="$out.done" runner="${out%.md}.run.sh"
+  rm -f "$out" "$sentinel"
+  local codex_cmd="codex exec -m $model"
+  if [[ -n "$resume" ]]; then codex_cmd="codex exec resume $resume"; fi
+  cat > "$runner" <<EOF
+#!/usr/bin/env bash
+echo "=== $name ==="
+$codex_cmd -s read-only -o $out - < $prompt_file 2>&1 | tee $log
+touch $sentinel
+EOF
+  chmod +x "$runner"
+
+  case "$vis" in
+    tmux)
+      echo 'sleep 10' >> "$runner"   # pane lingers so the human can read the tail
+      tmux split-window -d -v -l 15 "$runner" ;;
+    iterm)
+      osascript -e "tell application \"iTerm2\" to tell current session of current window to split horizontally with default profile command \"$runner\"" >/dev/null ;;
+    window)
+      osascript -e "tell application \"Terminal\" to do script \"$runner\"" >/dev/null ;;
+    background)
+      nohup "$runner" >/dev/null 2>&1 & ;;
+    *) die "unknown visibility: $vis" ;;
+  esac
+  printf 'report=%s\nlog=%s\nsentinel=%s\nmode=%s\n' "$out" "$log" "$sentinel" "$vis"
+}
+
 case "${1:-}" in
   preflight) preflight ;;
   detect) detect ;;
   set-visibility) shift; set_visibility "$@" ;;
   session-id) shift; session_id "$@" ;;
+  run) shift; run_codex "$@" ;;
   *) usage ;;
 esac

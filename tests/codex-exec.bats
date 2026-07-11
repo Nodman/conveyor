@@ -63,3 +63,72 @@ CX="env -u TMUX LC_TERMINAL= TERM_PROGRAM="
   [ "$status" -eq 0 ]
   [ "$output" = "019f-abc" ]
 }
+
+wait_sentinel() { # $1=path — poll up to ~5s
+  for _ in $(seq 1 50); do [ -f "$1" ] && return 0; sleep 0.1; done
+  return 1
+}
+
+@test "run background: sentinel, report, log with session id" {
+  use_cfg
+  printf 'the question\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r1.md' --prompt-file '$TMP/p.txt'"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"mode=background"* ]]
+  wait_sentinel "$TMP/r1.md.done"
+  [ -f "$TMP/r1.md" ]
+  run bash -c "'$SCRIPTS/codex-exec.sh' session-id '$TMP/r1.log'"
+  [ "$output" = "0000-mock-session" ]
+}
+
+@test "run codex args: read-only, model, stdin prompt" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r1.md' --prompt-file '$TMP/p.txt'"
+  wait_sentinel "$TMP/r1.md.done"
+  run grep -F 'codex exec' "$RUN_LOG"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"-s read-only"* && "$output" == *"-m gpt-5.6-sol"* && "$output" == *"-o $TMP/r1.md"* ]]
+}
+
+@test "run tmux mode: pane spawned with runner script" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r1.md' --prompt-file '$TMP/p.txt' --visibility tmux"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"mode=tmux"* ]]
+  run grep -F 'tmux split-window' "$RUN_LOG"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$TMP/r1.run.sh"* ]]
+  # pane never ran (tmux is mocked) — assert the runner's contract instead;
+  # don't execute it: the appended 'sleep 10' linger would stall the suite
+  run cat "$TMP/r1.run.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"codex exec"* && "$output" == *"touch $TMP/r1.md.done"* && "$output" == *"sleep 10"* ]]
+}
+
+@test "run window mode: osascript Terminal spawn" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r1.md' --prompt-file '$TMP/p.txt' --visibility window"
+  [ "$status" -eq 0 ]
+  run grep -F 'osascript' "$RUN_LOG"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Terminal"* && "$output" == *"$TMP/r1.run.sh"* ]]
+}
+
+@test "run resume: explicit session id, never --last" {
+  use_cfg
+  printf 'rebuttal\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r2.md' --prompt-file '$TMP/p.txt' --resume 0000-mock-session"
+  wait_sentinel "$TMP/r2.md.done"
+  run grep -F 'codex exec resume' "$RUN_LOG"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"0000-mock-session"* && "$output" != *"--last"* ]]
+}
+
+@test "run without required args → usage" {
+  use_cfg
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name x"
+  [ "$status" -eq 2 ]
+}
