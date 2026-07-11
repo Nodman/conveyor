@@ -74,7 +74,7 @@ wait_sentinel() { # $1=path — poll up to ~5s
   printf 'the question\n' > "$TMP/p.txt"
   run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r1.md' --prompt-file '$TMP/p.txt'"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"mode=background"* ]]
+  grep -qF 'mode=background' <<<"$output"
   wait_sentinel "$TMP/r1.md.done"
   [ -f "$TMP/r1.md" ]
   run bash -c "'$SCRIPTS/codex-exec.sh' session-id '$TMP/r1.log'"
@@ -96,10 +96,10 @@ wait_sentinel() { # $1=path — poll up to ~5s
   printf 'q\n' > "$TMP/p.txt"
   run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r1.md' --prompt-file '$TMP/p.txt' --visibility tmux"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"mode=tmux"* ]]
+  grep -qF 'mode=tmux' <<<"$output"
   run grep -F 'tmux split-window' "$RUN_LOG"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"$TMP/r1.run.sh"* ]]
+  grep -qF "$TMP/r1.run.sh" <<<"$output"
   # pane never ran (tmux is mocked) — assert the runner's contract instead;
   # don't execute it: the appended 'sleep 10' linger would stall the suite
   run cat "$TMP/r1.run.sh"
@@ -131,4 +131,11 @@ wait_sentinel() { # $1=path — poll up to ~5s
   use_cfg
   run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name x"
   [ "$status" -eq 2 ]
+}
+
+@test "session-id dies when log has no session id header" {
+  printf -- '--------\nno header here\n--------\n' > "$TMP/r1.log"
+  run bash -c "'$SCRIPTS/codex-exec.sh' session-id '$TMP/r1.log'"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"no session id"* ]]
 }
