@@ -29,6 +29,9 @@ step on a repo that already has related state.
 4. **Config.** Re-run `board-discover.sh` post-reconcile; write
    `.claude/conveyor.json` (schema in the plugin README; mergePolicy: ask
    solo vs maintainers). Verify every status key has an id.
+   Include `"pluginVersion"`: the installed plugin's version
+   (`jq -r .version ${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`) — the
+   session-start hook compares it to nudge `/conveyor:doctor` after updates.
 5. **Scaffold.** `scaffold.sh` (docs dirs, issue template, labels, CLAUDE.md
    block). Show the diff to the user.
 6. **Label permissions (consent gate).** Conveyor agents apply lifecycle
