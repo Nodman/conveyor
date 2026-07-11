@@ -44,6 +44,8 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
   grep -qF -- '**Human required:**' "$REPO/plugin/skills/executing-tasks/SKILL.md"
   grep -qF -- '--grant-label-perms' "$REPO/plugin/skills/init/SKILL.md"
   grep -qF -- '--grant-label-perms' "$REPO/plugin/skills/doctor/SKILL.md"
+  grep -qF -- 'set-visibility' "$REPO/plugin/skills/init/SKILL.md"
+  grep -qF -- 'set-visibility' "$REPO/plugin/skills/doctor/SKILL.md"
 }
 
 @test "qa-passed removal-on-invalidation defined for PR and issue" {
