@@ -20,7 +20,7 @@ owner="$(cfg .owner)"
 project="$(cfg .project)"
 approved="$(cfg .labels.approved)"
 qa_passed="$(cfg .labels.qaPassed)"
-ready_to_merge="$(cfg .labels.readyToMerge)"
+ready_to_merge="$(cfg_or .labels.readyToMerge ready-to-merge)"
 sub="s|{{OWNER_PROJECT}}|$owner/$project|g"
 
 say() { if [[ $dry -eq 1 ]]; then echo "scaffold: [dry-run] $*"; else echo "scaffold: $*"; fi; }

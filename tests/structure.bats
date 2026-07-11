@@ -54,4 +54,6 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
 @test "ready-to-merge apply and invalidation owned by the orchestrator" {
   grep -qF -- '--add-label ready-to-merge' "$REPO/plugin/skills/executing-tasks/SKILL.md"
   grep -qF -- '--remove-label ready-to-merge' "$REPO/plugin/skills/executing-tasks/SKILL.md"
+  # no agent touches the label — orchestrator is the sole owner (decisive grep last, per bats gotcha)
+  ! grep -rqF -- '-label ready-to-merge' "$REPO/plugin/agents/"
 }

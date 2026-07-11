@@ -6,7 +6,7 @@ need gh; need jq
 
 OWNER="$(cfg .owner)"; REPO="$(cfg .repo)"; PROJECT="$(cfg .project)"
 APPROVED="$(cfg '.labels.approved')"; QAPASSED="$(cfg '.labels.qaPassed')"
-READYTOMERGE="$(cfg '.labels.readyToMerge')"
+READYTOMERGE="$(cfg_or '.labels.readyToMerge' ready-to-merge)"
 HERE="$(dirname "${BASH_SOURCE[0]}")"
 
 S_HO="$(status_name humanOnly)"; S_IP="$(status_name inProgress)"
@@ -113,6 +113,12 @@ if [[ -f CLAUDE.md ]]; then
   if { [[ "$b" -gt 0 && "$e" -eq 0 ]] || [[ "$b" -eq 0 && "$e" -gt 0 ]]; }; then
     flag "CLAUDE.md conveyor marker block is broken (one marker without the other)"
   fi
+fi
+
+# R9b: pre-0.1.13 configs lack the readyToMerge label key — the scripts default it,
+# but flag it so the config is brought current.
+if [[ -z "$(jq -r '.labels.readyToMerge // empty' "$CONVEYOR_CONFIG")" ]]; then
+  flag "config .labels.readyToMerge missing — fix: jq '.labels.readyToMerge = \"ready-to-merge\"' $CONVEYOR_CONFIG > tmp && mv tmp $CONVEYOR_CONFIG"
 fi
 
 # R9: configured labels must exist on the repo.
