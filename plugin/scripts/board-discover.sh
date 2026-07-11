@@ -6,9 +6,17 @@ need gh; need jq
 
 if [[ "${1:-}" == "--find" ]]; then
   owner="$2"; repo="$3"
+  # shellcheck disable=SC2016  # $o/$r are GraphQL variables, not shell expansions
+  num=$(gh api graphql \
+    -f query='query LinkedProject($o:String!,$r:String!){repository(owner:$o,name:$r){projectsV2(first:1,query:"is:open"){nodes{number}}}}' \
+    -f o="$owner" -f r="$repo" 2>/dev/null \
+    | jq -r '.data.repository.projectsV2.nodes[0].number // empty' 2>/dev/null) || num=""
+  if [[ -n "$num" ]]; then echo "$num"; exit 0; fi
+  # fallback: v1 title match (repo name == project title), flagged
   num=$(gh project list --owner "$owner" --format json \
     | jq -r --arg r "$repo" '[.projects[] | select(.title==$r)][0].number // empty')
   [[ -n "$num" ]] || die_code3 "no project linked to $repo"
+  echo "WARN: no project linked to $repo; matched by title" >&2
   echo "$num"; exit 0
 fi
 
