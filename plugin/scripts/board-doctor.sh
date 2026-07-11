@@ -5,7 +5,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 need gh; need jq
 
 OWNER="$(cfg .owner)"; REPO="$(cfg .repo)"; PROJECT="$(cfg .project)"
-APPROVED="$(cfg '.labels.approved')"
+APPROVED="$(cfg '.labels.approved')"; QAPASSED="$(cfg '.labels.qaPassed')"
 HERE="$(dirname "${BASH_SOURCE[0]}")"
 
 S_HO="$(status_name humanOnly)"; S_IP="$(status_name inProgress)"
@@ -94,6 +94,19 @@ if [[ -f CLAUDE.md ]]; then
   if { [[ "$b" -gt 0 && "$e" -eq 0 ]] || [[ "$b" -eq 0 && "$e" -gt 0 ]]; }; then
     flag "CLAUDE.md conveyor marker block is broken (one marker without the other)"
   fi
+fi
+
+# R9: configured labels must exist on the repo.
+labels=$(gh label list -R "$OWNER/$REPO" --limit 200 --json name 2>/dev/null) || labels=ERR
+if [[ "$labels" == ERR ]]; then
+  echo "WARN: label check failed — re-run"
+else
+  for L in "$APPROVED" "$QAPASSED"; do
+    present=$(jq --arg L "$L" 'any(.[]?; .name==$L)' <<<"$labels")
+    if [[ "$present" != true ]]; then
+      flag "label '$L' missing — fix: gh label create '$L' --force -R $OWNER/$REPO"
+    fi
+  done
 fi
 
 if [[ "$findings" -eq 0 ]]; then

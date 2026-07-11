@@ -96,3 +96,18 @@ setup_drift() { use_cfg; printf '<!-- conveyor:begin -->\n' > "$TMP/CLAUDE.md"; 
   run_doctor doctor-drift-qa
   [[ "$output" == *"#41 in QA has an open PR but none carries the approved label"* ]]
 }
+
+# ---- doctor-drift-labels: R9 (missing configured label) -------------------
+
+@test "labels set exits 1" {
+  use_cfg
+  run_doctor doctor-drift-labels
+  [ "$status" -eq 1 ]
+}
+
+@test "R9 missing configured label with fix command" {
+  use_cfg
+  run_doctor doctor-drift-labels
+  [[ "$output" == *"label 'qa-passed' missing"* ]]
+  [[ "$output" == *"gh label create 'qa-passed' --force -R acme/widget"* ]]
+}
