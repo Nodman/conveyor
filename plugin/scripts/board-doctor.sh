@@ -37,10 +37,12 @@ has_unblock() { # $1=issue -> "yes"/"no" for an **Unblock:** comment, or "ERR" o
   fi
 }
 
-items=$(gh project item-list "$PROJECT" --owner "$OWNER" --limit 200 --format json \
-  | jq -c '[.items[] | select(.content.type=="Issue") | {n: .content.number, status}]')
-openset=$(gh issue list -R "$OWNER/$REPO" --state open --limit 300 --json number \
-  | jq -c '[.[].number]')
+items_raw=$(gh project item-list "$PROJECT" --owner "$OWNER" --limit 200 --format json)
+warn_capped "$(jq '.items | length' <<<"$items_raw")" 200 "gh project item-list"
+items=$(jq -c '[.items[] | select(.content.type=="Issue") | {n: .content.number, status}]' <<<"$items_raw")
+open_raw=$(gh issue list -R "$OWNER/$REPO" --state open --limit 300 --json number)
+warn_capped "$(jq 'length' <<<"$open_raw")" 300 "gh issue list"
+openset=$(jq -c '[.[].number]' <<<"$open_raw")
 
 while IFS=$'\t' read -r n status; do
   isopen=$(jq -n --argjson o "$openset" --argjson n "$n" '$o | index($n) != null')

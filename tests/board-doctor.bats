@@ -146,3 +146,37 @@ setup_drift() { use_cfg; printf '<!-- conveyor:begin -->\n' > "$TMP/CLAUDE.md"; 
   [ "$status" -eq 1 ]
   [ "$(jq -r '.pluginVersion // "absent"' "$TMP/.claude/conveyor.json")" = "absent" ]
 }
+
+# ---- list truncation WARNs (issue #4) -------------------------------------
+
+mk_capped() { # $1=dest dir  $2=item count  $3=issue count — clean board, capped lists
+  cp -r "$BATS_TEST_DIRNAME/fixtures/doctor-clean" "$1"
+  jq -n --argjson c "$2" \
+    '{items: [range($c) | {id: "PVTI_\(1000+.)", content: {number: (1000+.), type: "Issue"}, status: "Done"}]}' \
+    > "$1/project_item-list.out"
+  jq -n --argjson c "$3" '[range($c) | {number: (2000+.)}]' > "$1/issue_list.out"
+}
+
+@test "item-list at the 200 cap WARNs and still exits 0 on a clean board" {
+  use_cfg
+  mk_capped "$TMP/fix" 200 5
+  GH_FIX="$TMP/fix" run bash -c "cd '$TMP' && '$SCRIPTS/board-doctor.sh'"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"WARN: gh project item-list returned 200 == limit — results may be truncated"* ]]
+}
+
+@test "issue list at the 300 cap WARNs and still exits 0 on a clean board" {
+  use_cfg
+  mk_capped "$TMP/fix" 5 300
+  GH_FIX="$TMP/fix" run bash -c "cd '$TMP' && '$SCRIPTS/board-doctor.sh'"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"WARN: gh issue list returned 300 == limit — results may be truncated"* ]]
+}
+
+@test "counts below the caps emit no truncation WARN" {
+  use_cfg
+  mk_capped "$TMP/fix" 199 299
+  GH_FIX="$TMP/fix" run bash -c "cd '$TMP' && '$SCRIPTS/board-doctor.sh'"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"== limit — results may be truncated"* ]]
+}

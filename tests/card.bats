@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+bats_require_minimum_version 1.5.0
 load helpers/env
 
 use_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/conveyor.json"; }
@@ -43,4 +44,15 @@ use_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/conveyo
     run bash -c "cd '$TMP' && '$SCRIPTS/card.sh' frobnicate 41"
   [ "$status" -ne 0 ]
   [[ "$output" == *"usage:"* ]]
+}
+
+@test "item-list at the 200 cap WARNs on stderr, find stdout preserved" {
+  use_cfg
+  mkdir -p "$TMP/fix"
+  jq -n '{items: [range(1;201) | {id: "PVTI_\(.)", content: {number: .}, status: "Ready for dev"}]}' \
+    > "$TMP/fix/project_item-list.out"
+  GH_FIX="$TMP/fix" run --separate-stderr bash -c "cd '$TMP' && '$SCRIPTS/card.sh' find 41"
+  [ "$status" -eq 0 ]
+  [ "$output" = $'PVTI_41\tReady for dev' ]
+  [[ "$stderr" == *"WARN: gh project item-list returned 200 == limit — results may be truncated"* ]]
 }
