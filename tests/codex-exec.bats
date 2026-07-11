@@ -77,6 +77,7 @@ wait_sentinel() { # $1=path — poll up to ~5s
   grep -qF 'mode=background' <<<"$output"
   wait_sentinel "$TMP/r1.md.done"
   [ -f "$TMP/r1.md" ]
+  [ "$(cat "$TMP/r1.md.done")" = "0" ]
   run bash -c "'$SCRIPTS/codex-exec.sh' session-id '$TMP/r1.log'"
   [ "$output" = "0000-mock-session" ]
 }
@@ -104,7 +105,7 @@ wait_sentinel() { # $1=path — poll up to ~5s
   # don't execute it: the appended 'sleep 10' linger would stall the suite
   run cat "$TMP/r1.run.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"codex exec"* && "$output" == *"touch $TMP/r1.md.done"* && "$output" == *"sleep 10"* ]]
+  [[ "$output" == *"codex exec"* && "$output" == *"> $TMP/r1.md.done"* && "$output" == *"sleep 10"* ]]
 }
 
 @test "run window mode: osascript Terminal spawn" {
@@ -117,14 +118,17 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [[ "$output" == *"Terminal"* && "$output" == *"$TMP/r1.run.sh"* ]]
 }
 
-@test "run resume: explicit session id, never --last" {
+@test "run resume: read-only via -c sandbox_mode, never -s or --last; report created" {
   use_cfg
   printf 'rebuttal\n' > "$TMP/p.txt"
   run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r2.md' --prompt-file '$TMP/p.txt' --resume 0000-mock-session"
-  wait_sentinel "$TMP/r2.md.done"
-  run grep -F 'codex exec resume' "$RUN_LOG"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"0000-mock-session"* && "$output" != *"--last"* ]]
+  wait_sentinel "$TMP/r2.md.done"
+  [ -f "$TMP/r2.md" ]
+  [ "$(cat "$TMP/r2.md.done")" = "0" ]
+  run cat "$TMP/r2.run.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'codex exec resume 0000-mock-session'* && "$output" == *'sandbox_mode="read-only"'* && "$output" != *'-s read-only'* && "$output" != *'--last'* ]]
 }
 
 @test "run without required args → usage" {

@@ -63,13 +63,14 @@ run_codex() {
 
   local log="${out%.md}.log" sentinel="$out.done" runner="${out%.md}.run.sh"
   rm -f "$out" "$sentinel"
-  local codex_cmd="codex exec -m $model"
-  if [[ -n "$resume" ]]; then codex_cmd="codex exec resume $resume"; fi
+  local codex_cmd="codex exec -m $model" sandbox="-s read-only"
+  # resume subcommand rejects -s; set the sandbox via config instead
+  if [[ -n "$resume" ]]; then codex_cmd="codex exec resume $resume"; sandbox="-c 'sandbox_mode=\"read-only\"'"; fi
   cat > "$runner" <<EOF
 #!/usr/bin/env bash
 echo "=== $name ==="
-$codex_cmd -s read-only -o $out - < $prompt_file 2>&1 | tee $log
-touch $sentinel
+$codex_cmd $sandbox -o $out - < $prompt_file 2>&1 | tee $log
+echo "\${PIPESTATUS[0]}" > $sentinel
 EOF
   chmod +x "$runner"
 

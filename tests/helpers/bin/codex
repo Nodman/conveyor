@@ -2,6 +2,15 @@
 set -euo pipefail
 echo "codex $*" >> "${RUN_LOG:?}"
 if [[ "${1:-}" == "login" ]]; then echo "Logged in (mock)"; exit 0; fi
+has_resume="" has_s=""
+for a in "$@"; do
+  [[ "$a" == "resume" ]] && has_resume=1
+  [[ "$a" == "-s" ]] && has_s=1
+done
+if [[ -n "$has_resume" && -n "$has_s" ]]; then
+  echo "error: unexpected argument '-s' found" >&2
+  exit 2
+fi
 out="" prev=""
 for a in "$@"; do
   if [[ "$prev" == "-o" ]]; then out="$a"; fi
