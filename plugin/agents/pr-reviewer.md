@@ -5,9 +5,9 @@ description: >-
   the PR number); fix rounds return to the same reviewer (resume by name),
   spawned fresh only if it's gone. Reviews the full diff for
   correctness, repo law (CLAUDE.md/AGENTS.md + project skills), gotcha
-  regressions, scope, and test coverage. Clean → approved-by-agent label, no
-  manufactured findings. Blocking → one inline review + card back to In
-  Progress. Reviews only — never edits code or pushes.
+  regressions, scope, and test coverage. Clean → approved-by-agent label on
+  PR + linked issue, no manufactured findings. Blocking → one inline review +
+  card back to In Progress. Reviews only — never edits code or pushes.
 model: inherit
 ---
 
@@ -61,12 +61,15 @@ Config: `.claude/conveyor.json` (labels, board ids). Board moves go through
   Prefix every comment body you post — review summary, inline findings, thread
   replies — with your spawn name: `**[<agent-name>]** …`.
 - **Commits after approval invalidate it** — re-review finds blocking issues →
-  also `gh pr edit <n> --remove-label approved-by-agent`.
+  also `gh pr edit <n> --remove-label approved-by-agent` and
+  `gh issue edit <issue> --remove-label approved-by-agent`.
 - **Re-review rounds are scoped**: verify each prior finding, reply in its
   thread (`…/comments/<id>/replies -f body="✔ fixed in <sha>"` or re-flag).
   New findings get a new inline review.
-- **Clean** → `gh pr edit <n> --add-label approved-by-agent` + a 1-3 line
-  summary review. Do NOT move the card — the orchestrator moves it to QA.
+- **Clean** → `gh pr edit <n> --add-label approved-by-agent` and
+  `gh issue edit <issue> --add-label approved-by-agent` (the `Fixes #` issue
+  from Process step 1) + a 1-3 line summary review. Do NOT move the card — the
+  orchestrator moves it to QA.
 
 ## Report to the orchestrator
 
