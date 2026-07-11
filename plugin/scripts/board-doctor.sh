@@ -87,6 +87,12 @@ done < <(jq -r '.[] | "\(.n)\t\(.status)"' <<<"$items")
 discover=$("$HERE/board-discover.sh" "$OWNER" "$PROJECT" 2>/dev/null) || discover=""
 if [[ -n "$discover" ]]; then
   live=$(jq -c '[.status[]?.id, .priority[]?.id] | map(select(. != null))' <<<"$discover")
+  if [[ -z "$(jq -r '.priorityFieldId // empty' <<<"$discover")" ]]; then
+    flag "live board has no Priority field — fix: re-run /conveyor:init (board-reconcile creates it)"
+  fi
+  if [[ -z "$(jq -r '.priority // empty' "$CONVEYOR_CONFIG")" ]]; then
+    flag "config has no priority mapping — fix: re-run board-discover.sh and update .claude/conveyor.json"
+  fi
   while IFS=$'\t' read -r key id; do
     present=$(jq -n --argjson l "$live" --arg id "$id" '$l | index($id) != null')
     if [[ "$present" != true ]]; then flag "config status '$key' id $id absent from live board"; fi

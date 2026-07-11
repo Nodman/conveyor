@@ -39,6 +39,19 @@ load helpers/env
   [ "$(jq -r '.variables.opts | length' "$TMP/last-graphql.json")" -eq 9 ]
 }
 
+@test "reconcile creates the Priority field when the board has none" {
+  echo '{"backlog":"Todo","inProgress":"In Progress","done":"Done"}' > "$TMP/map.json"
+  GH_FIX="$BATS_TEST_DIRNAME/fixtures/reconcile-noprio" \
+    run "$SCRIPTS/board-reconcile.sh" acme 7 "$TMP/map.json"
+  [ "$status" -eq 0 ]
+  # CreatePriorityField is the last mutation, so last-graphql.json holds its payload
+  [ "$(jq -r '.query | contains("CreatePriorityField")' "$TMP/last-graphql.json")" = "true" ]
+  for p in P1 P2 P3; do
+    run jq -e --arg n "$p" '.variables.opts[] | select(.name==$n)' "$TMP/last-graphql.json"
+    [ "$status" -eq 0 ]
+  done
+}
+
 @test "reconcile rejects a mapping value that is not an existing option name" {
   echo '{"backlog":"Nonexistent Column"}' > "$TMP/map.json"
   GH_FIX="$BATS_TEST_DIRNAME/fixtures/reconcile" \

@@ -68,4 +68,17 @@ jq -n --arg fid "$fid" --argjson opts "$opts" '{
   variables: { fieldId: $fid, opts: $opts }
 }' | gh api graphql --input - >/dev/null
 
+# Adopt path: boards without a Priority field get the canonical P1/P2/P3 one.
+if [[ -z "$(jq -r '.fields[] | select(.name=="Priority") | .id' <<<"$fields")" ]]; then
+  pid="$(gh project view "$number" --owner "$owner" --format json | jq -r '.id')"
+  jq -n --arg pid "$pid" '{
+    query: "mutation CreatePriorityField($projectId: ID!, $opts: [ProjectV2SingleSelectFieldOptionInput!]) { createProjectV2Field(input: {projectId: $projectId, dataType: SINGLE_SELECT, name: \"Priority\", singleSelectOptions: $opts}) { projectV2Field { ... on ProjectV2SingleSelectField { id } } } }",
+    variables: { projectId: $pid, opts: [
+      {name:"P1",color:"RED",description:""},
+      {name:"P2",color:"YELLOW",description:""},
+      {name:"P3",color:"GREEN",description:""}
+    ]}}' | gh api graphql --input - >/dev/null
+  echo "created Priority field" >&2
+fi
+
 echo "$opts"

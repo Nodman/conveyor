@@ -73,6 +73,20 @@ setup_drift() { use_cfg; printf '<!-- conveyor:begin -->\n' > "$TMP/CLAUDE.md"; 
   [[ "$output" == *"WARN: config staleness check failed — re-run"* ]]
 }
 
+@test "R7 live board with no Priority field flags and exits 1" {
+  use_cfg
+  run_doctor doctor-noprio
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"live board has no Priority field"* ]]
+}
+
+@test "R7 config with no priority mapping flags and exits 1" {
+  jq '.priority = null' "$BATS_TEST_DIRNAME/fixtures/conveyor.json" > "$TMP/.claude/conveyor.json"
+  run_doctor doctor-clean
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"config has no priority mapping"* ]]
+}
+
 # ---- doctor-drift-pr: R3, R5 (no PR) --------------------------------------
 
 @test "pr set exits 1" {

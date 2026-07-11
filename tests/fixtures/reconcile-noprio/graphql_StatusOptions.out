@@ -1,0 +1,5 @@
+{"data":{"node":{"options":[
+  {"id":"opt_td","name":"Todo","color":"GRAY","description":"Legacy backlog"},
+  {"id":"opt_ip","name":"In Progress","color":"YELLOW","description":"Being worked"},
+  {"id":"opt_dn","name":"Done","color":"GREEN","description":"Completed"}
+]}}}
