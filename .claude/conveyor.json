@@ -61,5 +61,5 @@
   "qaSkipPaths": [
     "docs/**"
   ],
-  "pluginVersion": "0.1.10"
+  "pluginVersion": "0.1.11"
 }
