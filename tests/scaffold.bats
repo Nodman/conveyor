@@ -55,6 +55,15 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   [[ "$output" == *"skip .gitignore"* ]]
 }
 
+@test "scaffold gitignore append on a file without a trailing newline stays on its own line" {
+  seed_cfg
+  printf 'node_modules/' > "$TMP/.gitignore"
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh'"
+  [ "$status" -eq 0 ]
+  grep -qxF 'node_modules/' "$TMP/.gitignore"
+  grep -qxF '.claude/worktrees/' "$TMP/.gitignore"
+}
+
 @test "scaffold --dry-run does not write .gitignore" {
   seed_cfg
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --dry-run"

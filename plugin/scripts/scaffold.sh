@@ -70,7 +70,10 @@ if [[ -f "$gi" ]] && grep -qxF '.claude/worktrees/' "$gi"; then
   echo "scaffold: skip $gi (.claude/worktrees/ present)"
 else
   say "add .claude/worktrees/ to $gi"
-  if [[ $dry -eq 0 ]]; then printf '.claude/worktrees/\n' >> "$gi"; fi
+  if [[ $dry -eq 0 ]]; then
+    if [[ -s "$gi" && -n "$(tail -c1 "$gi")" ]]; then printf '\n' >> "$gi"; fi
+    printf '.claude/worktrees/\n' >> "$gi"
+  fi
 fi
 
 # 7. Label permissions — opt-in only (consent handled by the init/doctor skills).

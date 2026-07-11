@@ -178,6 +178,13 @@ setup_drift() { use_cfg; printf '<!-- conveyor:begin -->\n' > "$TMP/CLAUDE.md"; 
   [[ "$output" != *"agent-tmp"* ]]
 }
 
+@test "R10 handles worktree paths containing spaces" {
+  use_cfg
+  run_doctor doctor-worktree-space
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"orphaned worktree /repo/.claude/worktrees/fix-9 spaced"* ]]
+}
+
 # ---- pluginVersion stamp ---------------------------------------------------
 
 @test "clean run stamps pluginVersion and preserves other keys" {

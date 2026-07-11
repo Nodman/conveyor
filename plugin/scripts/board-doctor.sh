@@ -151,7 +151,7 @@ else
       echo "WARN: orphaned worktree $wpath — branch $short has no open PR; git worktree remove it" >&2
     fi
   done < <(awk '
-    /^worktree / { p=$2; b="" }
+    /^worktree / { p=substr($0,10); b="" }
     /^branch /   { b=$2 }
     /^$/         { if (p != "") print p "\t" b; p=""; b="" }
     END          { if (p != "") print p "\t" b }' <<<"$wt")
