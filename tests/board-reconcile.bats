@@ -61,6 +61,14 @@ load helpers/env
   [[ "$output" == *"Nonexistent Column"* ]]
 }
 
+@test "reconcile rejects a rename target that collides with an existing option name" {
+  echo '{"done":"Finished"}' > "$TMP/map.json"
+  GH_FIX="$BATS_TEST_DIRNAME/fixtures/reconcile-dup" \
+    run "$SCRIPTS/board-reconcile.sh" acme 7 "$TMP/map.json"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"duplicate option name"* ]]
+}
+
 @test "reconcile rejects an unknown canonical key" {
   echo '{"notAState":"Todo"}' > "$TMP/map.json"
   GH_FIX="$BATS_TEST_DIRNAME/fixtures/reconcile" \
