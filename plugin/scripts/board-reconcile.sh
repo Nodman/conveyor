@@ -45,6 +45,10 @@ bad_val="$(jq -rn --argjson ex "$existing" --argjson map "$mapping" \
   '($ex | map(.name)) as $names | $map | to_entries[] | select(.value as $v | ($names | index($v)) | not) | .value')"
 [[ -z "$bad_val" ]] || die "mapping value(s) not an existing option name: $(tr '\n' ' ' <<<"$bad_val")"
 
+# Repeated VALUES would collapse in keyByName below, silently dropping a canonical column.
+dup_val="$(jq -rn --argjson map "$mapping" '[$map[]] | group_by(.)[] | select(length>1) | .[0]')"
+[[ -z "$dup_val" ]] || die "mapping produces duplicate mapping value(s): $(tr '\n' ' ' <<<"$dup_val") — each existing column maps to at most one canonical key"
+
 # Kept options preserve their id (id match ⇒ value-preserving rename); appended canonicals carry none.
 opts="$(jq -n --argjson existing "$existing" --argjson map "$mapping" --argjson canon "$canon" '
   ($map | to_entries | map({(.value): .key}) | add // {}) as $keyByName |
