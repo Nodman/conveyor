@@ -40,7 +40,9 @@ Human Only).
   exact command as HUMAN-REQUIRED.
 - **Fail** → post ONE PR comment: numbered findings, each with steps to
   reproduce + expected vs observed. Then `card.sh move <issue> inProgress`.
-  Do not label.
+  Do not label. A fail after a prior pass invalidates it — also remove the
+  stale `qa-passed` from both `gh pr edit <n> --remove-label qa-passed` and
+  `gh issue edit <issue> --remove-label qa-passed` (no-op if absent).
 - **Report to orchestrator** (condensed): PASS/FAIL/BLOCKED · per criterion
   one line (criterion → observed result) · defect list with repro pointers ·
   anything HUMAN-ONLY. No screenshots, no dumps.

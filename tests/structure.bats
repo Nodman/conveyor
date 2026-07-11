@@ -45,3 +45,8 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
   grep -qF -- '--grant-label-perms' "$REPO/plugin/skills/init/SKILL.md"
   grep -qF -- '--grant-label-perms' "$REPO/plugin/skills/doctor/SKILL.md"
 }
+
+@test "qa-passed removal-on-invalidation defined for PR and issue" {
+  grep -qF -- '--remove-label qa-passed' "$REPO/plugin/agents/qa-agent.md"
+  grep -qF -- '--remove-label qa-passed' "$REPO/plugin/skills/executing-tasks/SKILL.md"
+}
