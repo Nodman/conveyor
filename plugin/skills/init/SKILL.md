@@ -37,10 +37,12 @@ step on a repo that already has related state.
 5. **Scaffold.** `scaffold.sh` (docs dirs, issue template, labels, CLAUDE.md
    block). Show the diff to the user.
 6. **Label permissions (consent gate).** Conveyor agents apply lifecycle
-   labels (`gh pr edit --add-label`); permission classifiers may block that.
-   Show the user the exact rules — `Bash(gh pr edit:*)`,
-   `Bash(gh issue edit:*)` — the file (`.claude/settings.json`, checked in),
-   and why. AskUserQuestion: grant / skip. Yes →
+   labels (`gh pr edit --add-label`), comment on issues, and file backlog
+   issues; permission classifiers may block those writes. Show the user the
+   exact rules — `Bash(gh pr edit:*)`, `Bash(gh issue edit:*)`,
+   `Bash(gh issue comment:*)`, `Bash(gh issue create:*)` — the file
+   (`.claude/settings.json`, checked in), and why. AskUserQuestion:
+   grant / skip. Yes →
    `scaffold.sh --grant-label-perms`; no → labels stay a manual human step at
    merge time. Never write permissions without this explicit yes.
 7. **Conflict scan.** Read the repo's CLAUDE.md/AGENTS.md fully. Report (do
