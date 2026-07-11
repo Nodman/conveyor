@@ -176,3 +176,56 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   [ ! -e "$TMP/.claude/settings.json" ]
   [[ "$output" == *"[dry-run]"* ]]
 }
+
+@test "--grant-auto-merge adds the merge allow and the auto-run autoMode rule" {
+  seed_cfg
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-auto-merge"
+  [ "$status" -eq 0 ]
+  s="$TMP/.claude/settings.json"
+  [ "$(jq '.permissions.allow | index("Bash(gh pr merge:*)")' "$s")" != "null" ]
+  [ "$(jq '.autoMode.allow | length' "$s")" -eq 2 ]
+  [ "$(jq -r '.autoMode.allow[0]' "$s")" = '$defaults' ]
+  grep -q 'conveyor:work auto' "$s"
+  grep -q 'ready-to-merge' "$s"
+}
+
+@test "--grant-auto-merge is idempotent — re-run adds no duplicates" {
+  seed_cfg
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-auto-merge"
+  [ "$status" -eq 0 ]
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-auto-merge"
+  [ "$status" -eq 0 ]
+  s="$TMP/.claude/settings.json"
+  [ "$(jq '.permissions.allow | length' "$s")" -eq 1 ]
+  [ "$(jq '.autoMode.allow | length' "$s")" -eq 2 ]
+}
+
+@test "--grant-auto-merge composes with --grant-label-perms" {
+  seed_cfg
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms --grant-auto-merge"
+  [ "$status" -eq 0 ]
+  s="$TMP/.claude/settings.json"
+  [ "$(jq '.permissions.allow | length' "$s")" -eq 5 ]
+  [ "$(jq '.autoMode.allow | length' "$s")" -eq 3 ]
+  [ "$(jq -r '.autoMode.allow[0]' "$s")" = '$defaults' ]
+}
+
+@test "--grant-auto-merge preserves existing settings" {
+  seed_cfg
+  printf '{"permissions":{"allow":["Bash(ls:*)"]},"env":{"FOO":"1"}}' \
+    > "$TMP/.claude/settings.json"
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-auto-merge"
+  [ "$status" -eq 0 ]
+  s="$TMP/.claude/settings.json"
+  [ "$(jq -r '.permissions.allow[0]' "$s")" = "Bash(ls:*)" ]
+  [ "$(jq '.permissions.allow | length' "$s")" -eq 2 ]
+  [ "$(jq -r '.env.FOO' "$s")" = "1" ]
+}
+
+@test "--grant-auto-merge respects --dry-run" {
+  seed_cfg
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --dry-run --grant-auto-merge"
+  [ "$status" -eq 0 ]
+  [ ! -e "$TMP/.claude/settings.json" ]
+  [[ "$output" == *"[dry-run]"* ]]
+}
