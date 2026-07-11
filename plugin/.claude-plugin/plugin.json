@@ -1,6 +1,6 @@
 {
   "name": "conveyor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "GitHub Projects agent delivery pipeline: brainstorm → spec → plan → TDD execution → PR review → QA → human merge.",
   "author": { "name": "Dmytro Burmistrov" },
   "license": "MIT",
