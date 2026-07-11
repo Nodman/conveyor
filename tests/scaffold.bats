@@ -41,14 +41,25 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   [ ! -s "$GH_LOG" ]
 }
 
-@test "--grant-label-perms creates settings.json with the two allow rules" {
+@test "--grant-label-perms creates settings.json with the four allow rules" {
   seed_cfg
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms"
   [ "$status" -eq 0 ]
-  [ "$(jq '.permissions.allow | length' "$TMP/.claude/settings.json")" -eq 2 ]
-  run jq -r '.permissions.allow[]' "$TMP/.claude/settings.json"
-  [[ "$output" == *"Bash(gh pr edit:*)"* ]]
-  [[ "$output" == *"Bash(gh issue edit:*)"* ]]
+  s="$TMP/.claude/settings.json"
+  [ "$(jq '.permissions.allow | length' "$s")" -eq 4 ]
+  [ "$(jq '.permissions.allow | index("Bash(gh pr edit:*)")' "$s")" != "null" ]
+  [ "$(jq '.permissions.allow | index("Bash(gh issue edit:*)")' "$s")" != "null" ]
+  [ "$(jq '.permissions.allow | index("Bash(gh issue comment:*)")' "$s")" != "null" ]
+  [ "$(jq '.permissions.allow | index("Bash(gh issue create:*)")' "$s")" != "null" ]
+}
+
+@test "--grant-label-perms is idempotent — re-run adds no duplicates" {
+  seed_cfg
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms"
+  [ "$status" -eq 0 ]
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms"
+  [ "$status" -eq 0 ]
+  [ "$(jq '.permissions.allow | length' "$TMP/.claude/settings.json")" -eq 4 ]
 }
 
 @test "--grant-label-perms merges without clobbering, duplicating, or reordering" {
@@ -57,10 +68,24 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
     > "$TMP/.claude/settings.json"
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms"
   [ "$status" -eq 0 ]
-  [ "$(jq '.permissions.allow | length' "$TMP/.claude/settings.json")" -eq 3 ]
-  [ "$(jq -r '.permissions.allow[0]' "$TMP/.claude/settings.json")" = "Bash(ls:*)" ]
-  [ "$(jq -r '.permissions.deny[0]' "$TMP/.claude/settings.json")" = "WebFetch" ]
-  [ "$(jq -r '.env.FOO' "$TMP/.claude/settings.json")" = "1" ]
+  s="$TMP/.claude/settings.json"
+  [ "$(jq '.permissions.allow | length' "$s")" -eq 5 ]
+  [ "$(jq -r '.permissions.allow[0]' "$s")" = "Bash(ls:*)" ]
+  [ "$(jq -r '.permissions.allow[1]' "$s")" = "Bash(gh pr edit:*)" ]
+  [ "$(jq -r '.permissions.deny[0]' "$s")" = "WebFetch" ]
+  [ "$(jq -r '.env.FOO' "$s")" = "1" ]
+}
+
+@test "--grant-label-perms on the old two rules gains exactly the new two" {
+  seed_cfg
+  printf '{"permissions":{"allow":["Bash(gh pr edit:*)","Bash(gh issue edit:*)"]}}' \
+    > "$TMP/.claude/settings.json"
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms"
+  [ "$status" -eq 0 ]
+  s="$TMP/.claude/settings.json"
+  [ "$(jq '.permissions.allow | length' "$s")" -eq 4 ]
+  [ "$(jq -r '.permissions.allow[2]' "$s")" = "Bash(gh issue comment:*)" ]
+  [ "$(jq -r '.permissions.allow[3]' "$s")" = "Bash(gh issue create:*)" ]
 }
 
 @test "without --grant-label-perms settings.json is untouched" {

@@ -71,7 +71,7 @@ if [[ $grant_perms -eq 1 ]]; then
     [[ -s "$s" ]] || echo '{}' > "$s"
     tmp=$(mktemp)
     jq '.permissions.allow = ((.permissions.allow // []) +
-        (["Bash(gh pr edit:*)","Bash(gh issue edit:*)"] - (.permissions.allow // [])))' \
+        (["Bash(gh pr edit:*)","Bash(gh issue edit:*)","Bash(gh issue comment:*)","Bash(gh issue create:*)"] - (.permissions.allow // [])))' \
       "$s" > "$tmp" && mv "$tmp" "$s"
   fi
 fi
