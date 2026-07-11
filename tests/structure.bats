@@ -66,3 +66,12 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
   grep -qF -- 'git worktree add .claude/worktrees/' "$f"
   grep -qF -- 'git worktree remove' "$f"
 }
+
+@test "judge agents exist, prefix their comments, and never edit" {
+  for f in "$REPO/plugin/agents/spec-judge.md" "$REPO/plugin/agents/plan-judge.md"; do
+    [ -f "$f" ]
+    grep -qF -- 'never edit' "$f"
+  done
+  grep -qF -- '**[spec-judge]**' "$REPO/plugin/agents/spec-judge.md"
+  grep -qF -- '**[plan-judge]**' "$REPO/plugin/agents/plan-judge.md"
+}
