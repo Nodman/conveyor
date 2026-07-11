@@ -1,0 +1,22 @@
+{
+  "fields": [
+    { "id": "PVTF_title", "name": "Title", "type": "ProjectV2Field" },
+    { "id": "PVTSSF_status", "name": "Status", "type": "ProjectV2SingleSelectField",
+      "options": [
+        { "id": "opt_ho", "name": "Human Only" },
+        { "id": "opt_bl", "name": "Backlog" },
+        { "id": "opt_rd", "name": "Ready for dev" },
+        { "id": "opt_ip", "name": "In Progress" },
+        { "id": "opt_ar", "name": "Agent Review" },
+        { "id": "opt_qa", "name": "QA" },
+        { "id": "opt_dn", "name": "Done" },
+        { "id": "opt_av", "name": "Archived" }
+      ] },
+    { "id": "PVTSSF_prio", "name": "Priority", "type": "ProjectV2SingleSelectField",
+      "options": [
+        { "id": "opt_p1", "name": "P1" },
+        { "id": "opt_p2", "name": "P2" },
+        { "id": "opt_p3", "name": "P3" }
+      ] }
+  ]
+}

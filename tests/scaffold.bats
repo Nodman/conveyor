@@ -38,6 +38,39 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   [[ "$output" == *"skip docs/DECISIONS.md"* ]]
 }
 
+@test "scaffold adds .claude/worktrees/ to .gitignore" {
+  seed_cfg
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh'"
+  [ "$status" -eq 0 ]
+  grep -qxF '.claude/worktrees/' "$TMP/.gitignore"
+}
+
+@test "scaffold gitignore append is idempotent and preserves entries" {
+  seed_cfg
+  printf 'node_modules/\n.claude/worktrees/\n' > "$TMP/.gitignore"
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh'"
+  [ "$status" -eq 0 ]
+  [ "$(grep -cxF '.claude/worktrees/' "$TMP/.gitignore")" -eq 1 ]
+  grep -qxF 'node_modules/' "$TMP/.gitignore"
+  [[ "$output" == *"skip .gitignore"* ]]
+}
+
+@test "scaffold gitignore append on a file without a trailing newline stays on its own line" {
+  seed_cfg
+  printf 'node_modules/' > "$TMP/.gitignore"
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh'"
+  [ "$status" -eq 0 ]
+  grep -qxF 'node_modules/' "$TMP/.gitignore"
+  grep -qxF '.claude/worktrees/' "$TMP/.gitignore"
+}
+
+@test "scaffold --dry-run does not write .gitignore" {
+  seed_cfg
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --dry-run"
+  [ "$status" -eq 0 ]
+  [ ! -e "$TMP/.gitignore" ]
+}
+
 @test "--dry-run prints [dry-run] lines and writes nothing" {
   seed_cfg
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --dry-run"

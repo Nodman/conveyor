@@ -6,7 +6,7 @@ description: Use when you need to run the conveyor test suite — the green gate
 # Running the conveyor tests
 
 - `bats tests` from the repo root — the full suite (offline, stubbed gh).
-- `shellcheck plugin/scripts/*.sh plugin/hooks/*.sh tests/helpers/bin/gh tests/live-smoke.sh` — must be clean; CI runs both.
+- `shellcheck plugin/scripts/*.sh plugin/hooks/*.sh tests/helpers/bin/gh tests/helpers/bin/git tests/live-smoke.sh` — must be clean; CI runs both.
 - Green = zero failures; report real counts.
 
 Traps:

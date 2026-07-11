@@ -64,7 +64,19 @@ if [[ $dry -eq 0 ]]; then
   sed "$sub" "$tpl/claude-block.md" | "$here/claude-block.sh" CLAUDE.md
 fi
 
-# 6. Label permissions — opt-in only (consent handled by the init/doctor skills).
+# 6. Gitignore the agent worktree dir — append once.
+gi=.gitignore
+if [[ -f "$gi" ]] && grep -qxF '.claude/worktrees/' "$gi"; then
+  echo "scaffold: skip $gi (.claude/worktrees/ present)"
+else
+  say "add .claude/worktrees/ to $gi"
+  if [[ $dry -eq 0 ]]; then
+    if [[ -s "$gi" && -n "$(tail -c1 "$gi")" ]]; then printf '\n' >> "$gi"; fi
+    printf '.claude/worktrees/\n' >> "$gi"
+  fi
+fi
+
+# 7. Label permissions — opt-in only (consent handled by the init/doctor skills).
 if [[ $grant_perms -eq 1 ]]; then
   say "grant label permissions in .claude/settings.json"
   if [[ $dry -eq 0 ]]; then

@@ -6,5 +6,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y bats shellcheck jq
-      - run: shellcheck plugin/scripts/*.sh plugin/hooks/*.sh tests/helpers/bin/gh tests/live-smoke.sh
+      - run: shellcheck plugin/scripts/*.sh plugin/hooks/*.sh tests/helpers/bin/gh tests/helpers/bin/git tests/live-smoke.sh
       - run: bats tests

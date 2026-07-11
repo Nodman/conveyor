@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+key="${1:-}_${2:-}"
+f="${GH_FIX:-}/git_$key.out"
+if [[ -f "$f" ]]; then cat "$f"; exit 0; fi
+exit 0

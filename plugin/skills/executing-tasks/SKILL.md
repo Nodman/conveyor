@@ -15,7 +15,20 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
 - Ledger: `.conveyor/ledger-<topic>.md` (gitignored). One line per plan task:
   status, commit sha, open questions. Survives compaction — update it after
   EVERY task, read it on resume.
-- Branch: create a feature branch; never work on the default branch.
+- Worktree: one per issue, cut fresh from the remote default branch — never
+  branch-switch the main checkout. If already inside a linked worktree
+  (`git rev-parse --git-common-dir` ≠ `--git-dir`), reuse it — don't nest.
+  Else create it once:
+  - `git fetch origin`
+  - resolve the default: `git symbolic-ref --short refs/remotes/origin/HEAD`
+    (strip the `origin/`; fallback `gh repo view --json defaultBranchRef -q
+    .defaultBranchRef.name`).
+  - verify the dir is ignored: `git check-ignore -q .claude/worktrees/` — if
+    it fails, add `.claude/worktrees/` to `.gitignore` first.
+  - `git worktree add .claude/worktrees/<branch> -b <branch> origin/<default>`.
+  Every executor for the issue works only there — `git -C <path>` or a
+  subshell, never bare-`cd` (docs/gotchas/worktrees.md). Reuse it across fix
+  rounds; `git worktree remove` it after the PR merges.
 
 ## Per plan task
 
