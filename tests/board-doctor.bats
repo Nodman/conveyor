@@ -156,6 +156,28 @@ setup_drift() { use_cfg; printf '<!-- conveyor:begin -->\n' > "$TMP/CLAUDE.md"; 
   [[ "$output" != *"config key not found"* && "$output" == *"config .labels.readyToMerge missing"* ]]
 }
 
+# ---- R10: orphaned worktrees ----------------------------------------------
+
+@test "R10 worktree with no open PR WARNs and still exits 0" {
+  use_cfg
+  run_doctor doctor-worktree-orphan
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"orphaned worktree"* && "$output" == *"fix/9-stale"* ]]
+}
+
+@test "R10 worktree with an open PR is not flagged" {
+  use_cfg
+  run_doctor doctor-worktree-active
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"orphaned worktree"* ]]
+}
+
+@test "R10 skips the main checkout and agent-* worktrees" {
+  use_cfg
+  run_doctor doctor-worktree-orphan
+  [[ "$output" != *"agent-tmp"* ]]
+}
+
 # ---- pluginVersion stamp ---------------------------------------------------
 
 @test "clean run stamps pluginVersion and preserves other keys" {

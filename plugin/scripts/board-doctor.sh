@@ -2,7 +2,7 @@
 set -euo pipefail
 # shellcheck source=plugin/scripts/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
-need gh; need jq
+need gh; need jq; need git
 
 OWNER="$(cfg .owner)"; REPO="$(cfg .repo)"; PROJECT="$(cfg .project)"
 APPROVED="$(cfg '.labels.approved')"; QAPASSED="$(cfg '.labels.qaPassed')"
@@ -132,6 +132,29 @@ else
       flag "label '$L' missing — fix: gh label create '$L' --force -R $OWNER/$REPO"
     fi
   done
+fi
+
+# R10: orphaned worktrees — a linked worktree under .claude/worktrees/ whose branch has no open PR (advisory; local leftovers aren't board drift).
+wt=$(git worktree list --porcelain 2>/dev/null) || wt=ERR
+if [[ "$wt" == ERR ]]; then
+  echo "WARN: worktree check failed — re-run" >&2
+else
+  while IFS=$'\t' read -r wpath wbranch; do
+    case "$wpath" in */.claude/worktrees/*) ;; *) continue ;; esac
+    case "${wpath##*/}" in agent-*) continue ;; esac
+    [[ -n "$wbranch" ]] || continue
+    short="${wbranch#refs/heads/}"
+    prs=$(gh pr list -R "$OWNER/$REPO" --head "$short" --state open --json number 2>/dev/null) || prs=ERR
+    if [[ "$prs" == ERR ]]; then
+      echo "WARN: worktree $wpath PR check failed — re-run" >&2
+    elif [[ "$(jq 'length' <<<"$prs")" -eq 0 ]]; then
+      echo "WARN: orphaned worktree $wpath — branch $short has no open PR; git worktree remove it" >&2
+    fi
+  done < <(awk '
+    /^worktree / { p=$2; b="" }
+    /^branch /   { b=$2 }
+    /^$/         { if (p != "") print p "\t" b; p=""; b="" }
+    END          { if (p != "") print p "\t" b }' <<<"$wt")
 fi
 
 if [[ "$findings" -eq 0 ]]; then

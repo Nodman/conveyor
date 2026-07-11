@@ -57,3 +57,12 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
   # no agent touches the label — orchestrator is the sole owner (decisive grep last, per bats gotcha)
   ! grep -rqF -- '-label ready-to-merge' "$REPO/plugin/agents/"
 }
+
+@test "executing-tasks Setup states the per-issue worktree policy" {
+  f="$REPO/plugin/skills/executing-tasks/SKILL.md"
+  grep -qF -- 'git fetch origin' "$f"
+  grep -qF -- 'refs/remotes/origin/HEAD' "$f"
+  grep -qF -- 'git check-ignore' "$f"
+  grep -qF -- 'git worktree add .claude/worktrees/' "$f"
+  grep -qF -- 'git worktree remove' "$f"
+}

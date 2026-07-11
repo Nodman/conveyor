@@ -1,0 +1,12 @@
+worktree /repo
+HEAD aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+branch refs/heads/main
+
+worktree /repo/.claude/worktrees/fix-9-stale
+HEAD bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+branch refs/heads/fix/9-stale
+
+worktree /repo/.claude/worktrees/agent-tmp
+HEAD cccccccccccccccccccccccccccccccccccccccc
+branch refs/heads/agent-tmp
+
