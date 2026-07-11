@@ -88,12 +88,15 @@ Runs after `ready-to-merge` is applied; every earlier gate is unchanged.
    `**Human required:**` checklist on the PR. Either fails → `card.sh move
    <issue> humanOnly` + `**Unblock:**` comment, report `blocked`, stop.
 2. Merge conflict → rebase inside the issue worktree (`git -C <path>`,
-   docs/gotchas/worktrees.md), push. The push invalidates `qa-passed`
-   (rule above) → re-run QA → retry the merge once; second failure →
-   humanOnly as in step 1.
-3. `gh pr merge <n> --squash --delete-branch`. `Fixes #<issue>` closes the
+   docs/gotchas/worktrees.md), `git push --force-with-lease`. The push
+   invalidates `qa-passed` (rule above) → re-run QA → retry the merge once;
+   second failure → humanOnly as in step 1.
+3. `git worktree remove` the issue worktree first — all gates have passed, so
+   it is no longer needed, and a branch checked out in a worktree can't be
+   `--delete-branch`d. Then run
+   `gh pr merge <n> --squash --delete-branch`. `Fixes #<issue>` closes the
    issue; board automation moves the card to Done — never move it yourself.
-   Then `git worktree remove` the issue worktree and report `merged <sha>`.
+   Report `merged <sha>`.
 
 ## Human-required follow-ups
 
