@@ -34,11 +34,11 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   seed_cfg
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --dry-run"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"[dry-run]"* ]]
   [ ! -d "$TMP/docs" ]
   [ ! -d "$TMP/.github" ]
   [ ! -f "$TMP/CLAUDE.md" ]
   [ ! -s "$GH_LOG" ]
+  [[ "$output" == *"[dry-run]"* ]]
 }
 
 @test "--grant-label-perms creates settings.json with the four allow rules" {
@@ -99,6 +99,6 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   seed_cfg
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --dry-run --grant-label-perms"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"[dry-run]"* ]]
   [ ! -e "$TMP/.claude/settings.json" ]
+  [[ "$output" == *"[dry-run]"* ]]
 }

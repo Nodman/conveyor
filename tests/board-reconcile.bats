@@ -57,8 +57,7 @@ load helpers/env
   GH_FIX="$BATS_TEST_DIRNAME/fixtures/reconcile" \
     run "$SCRIPTS/board-reconcile.sh" acme 7 "$TMP/map.json"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"not an existing option name"* ]]
-  [[ "$output" == *"Nonexistent Column"* ]]
+  [[ "$output" == *"not an existing option name"* && "$output" == *"Nonexistent Column"* ]]
 }
 
 @test "reconcile rejects a rename target that collides with an existing option name" {
@@ -74,8 +73,7 @@ load helpers/env
   GH_FIX="$BATS_TEST_DIRNAME/fixtures/reconcile" \
     run "$SCRIPTS/board-reconcile.sh" acme 7 "$TMP/map.json"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"unknown canonical key"* ]]
-  [[ "$output" == *"notAState"* ]]
+  [[ "$output" == *"unknown canonical key"* && "$output" == *"notAState"* ]]
 }
 
 @test "reconcile rejects a 0-byte mapping file" {

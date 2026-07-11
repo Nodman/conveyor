@@ -33,9 +33,10 @@ load helpers/env
   cp "$f" "$TMP/before"
   run bash -c "printf 'Z\n' | '$SCRIPTS/claude-block.sh' '$f'"
   [ "$status" -eq 1 ]
-  [[ "$output" == *marker* ]]
+  out="$output"
   run cmp "$f" "$TMP/before"
   [ "$status" -eq 0 ]
+  [[ "$out" == *marker* ]]
 }
 
 @test "end marker only → exit 1, message, file untouched" {
@@ -44,9 +45,10 @@ load helpers/env
   cp "$f" "$TMP/before"
   run bash -c "printf 'Z\n' | '$SCRIPTS/claude-block.sh' '$f'"
   [ "$status" -eq 1 ]
-  [[ "$output" == *marker* ]]
+  out="$output"
   run cmp "$f" "$TMP/before"
   [ "$status" -eq 0 ]
+  [[ "$out" == *marker* ]]
 }
 
 @test "idempotent: create then re-run with same stdin → identical file" {
@@ -74,9 +76,10 @@ load helpers/env
   cp "$f" "$TMP/before"
   run bash -c "printf 'Z\n' | '$SCRIPTS/claude-block.sh' '$f'"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"out of order"* ]]
+  out="$output"
   run cmp "$f" "$TMP/before"
   [ "$status" -eq 0 ]
+  [[ "$out" == *"out of order"* ]]
 }
 
 @test "missing FILE arg → usage error" {
