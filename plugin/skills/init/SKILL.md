@@ -31,15 +31,22 @@ step on a repo that already has related state.
    solo vs maintainers). Verify every status key has an id.
 5. **Scaffold.** `scaffold.sh` (docs dirs, issue template, labels, CLAUDE.md
    block). Show the diff to the user.
-6. **Conflict scan.** Read the repo's CLAUDE.md/AGENTS.md fully. Report (do
+6. **Label permissions (consent gate).** Conveyor agents apply lifecycle
+   labels (`gh pr edit --add-label`); permission classifiers may block that.
+   Show the user the exact rules — `Bash(gh pr edit:*)`,
+   `Bash(gh issue edit:*)` — the file (`.claude/settings.json`, checked in),
+   and why. AskUserQuestion: grant / skip. Yes →
+   `scaffold.sh --grant-label-perms`; no → labels stay a manual human step at
+   merge time. Never write permissions without this explicit yes.
+7. **Conflict scan.** Read the repo's CLAUDE.md/AGENTS.md fully. Report (do
    NOT edit): competing lifecycle/board instructions, superpowers references,
    rules contradicting the conveyor lifecycle (e.g. "commit to main"). The
    user reconciles their own prose.
-7. **Project skills.** Inspect the stack (build files, CI, README). Generate
+8. **Project skills.** Inspect the stack (build files, CI, README). Generate
    `.claude/skills/running-the-app/SKILL.md` and
    `.claude/skills/running-tests/SKILL.md` from the plugin templates, filling
    what you can determine (exact commands); leave `<!-- FILL -->` markers
    where you cannot. Ask the user to review — these are what qa-agent and
    executors depend on.
-8. **Verify.** Run `/conveyor:doctor`. Commit the scaffolding on a branch and
+9. **Verify.** Run `/conveyor:doctor`. Commit the scaffolding on a branch and
    offer a PR.

@@ -35,3 +35,13 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
   done
   [ "$found" -eq 1 ]
 }
+
+@test "prefix rule, human-required policy, and consent gate present in prose" {
+  grep -qF -- '**[<agent-name>]**' "$REPO/plugin/agents/pr-reviewer.md"
+  grep -qF -- '**[<agent-name>]**' "$REPO/plugin/agents/qa-agent.md"
+  grep -qF -- '**[<agent-name>]**' "$REPO/plugin/skills/executing-tasks/SKILL.md"
+  grep -qF -- '**[team-lead]**' "$REPO/plugin/skills/executing-tasks/SKILL.md"
+  grep -qF -- '**Human required:**' "$REPO/plugin/skills/executing-tasks/SKILL.md"
+  grep -qF -- '--grant-label-perms' "$REPO/plugin/skills/init/SKILL.md"
+  grep -qF -- '--grant-label-perms' "$REPO/plugin/skills/doctor/SKILL.md"
+}

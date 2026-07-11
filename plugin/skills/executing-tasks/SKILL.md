@@ -22,8 +22,11 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
 1. Spawn an implementer subagent, fresh context. Give it: the task text
    verbatim (files, interfaces, steps), the repo's relevant project skills by
    name, the TDD skill, and the report contract: condensed summary — what
-   changed, test evidence (command + counts), concerns. Name executors
-   stably (`exec-<issue>-<n>`) so review findings can go back to the author.
+   changed, test evidence (command + counts), concerns. Include the
+   comment-prefix rule: every PR/issue comment starts with the author's name
+   — `**[<agent-name>]**` (e.g. `**[exec-12-1]** Fixed in abc123.`). Name
+   executors stably (`exec-<issue>-<n>`) so review findings can go back to the
+   author.
    Executors run tests and commit; they never open PRs.
 2. Judge the report. Ambiguous or load-bearing claims → spot-check yourself
    (run the tests, read the diff). Two failures on the same task → take it
@@ -52,6 +55,19 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    re-review, then QA again). QA pass → report merge-ready to the human:
    PR link + one-line summary + labels present. **A human merges. Never
    merge, never move a card to Done.**
+
+## Human-required follow-ups
+
+Agents never sit on a human action or relay a denied write to another agent —
+they report it; the orchestrator routes it:
+
+- Doable at merge time on that PR (apply a label, run a one-liner) → maintain
+  ONE PR comment starting `**[team-lead]** **Human required:**` with a
+  checklist; update it in place, never post duplicates.
+- Needs scopes/credentials agents lack, or outlives the PR → agent-task
+  issue, `card.sh move <n> humanOnly`, `**Unblock:** <exact command>`
+  comment, assign the human.
+- Chat-only is not tracking: no PR comment or card → it doesn't exist.
 
 ## Team hygiene
 
