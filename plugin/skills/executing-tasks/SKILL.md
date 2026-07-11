@@ -50,14 +50,21 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    runtime surface → `card.sh move <issue> qa`, spawn **qa-agent** (PR + issue
    numbers). No runtime surface (docs-only; pure refactor with test coverage;
    or every changed path matches `qaSkipPaths` in `.claude/conveyor.json`) →
-   note "QA: n/a (<reason>)" in the PR body and treat as QA-passed.
+   note "QA: n/a (<reason>)" in the PR body, treat as QA-passed, and apply
+   `ready-to-merge` (`gh pr edit <n> --add-label ready-to-merge` and
+   `gh issue edit <issue> --add-label ready-to-merge`).
 5. QA fail → findings back to executors (same loop as review, then scoped
-   re-review, then QA again). QA pass → report merge-ready to the human:
-   PR link + one-line summary + labels present. **A human merges. Never
+   re-review, then QA again). QA pass → apply `ready-to-merge`
+   (`gh pr edit <n> --add-label ready-to-merge` and `gh issue edit <issue>
+   --add-label ready-to-merge`), then report merge-ready to the human:
+   PR link + one-line summary + labels present. `ready-to-merge` is the
+   orchestrator's alone — no subagent applies it. **A human merges. Never
    merge, never move a card to Done.**
 6. **Commits after a QA pass invalidate it** — new commits pushed after
-   `qa-passed` → remove it (`gh pr edit <n> --remove-label qa-passed` and
-   `gh issue edit <issue> --remove-label qa-passed`) and re-run QA.
+   `qa-passed` → remove it and `ready-to-merge` (`gh pr edit <n>
+   --remove-label qa-passed --remove-label ready-to-merge` and `gh issue edit
+   <issue> --remove-label qa-passed --remove-label ready-to-merge`) and re-run
+   QA.
 
 ## Human-required follow-ups
 

@@ -55,7 +55,8 @@
   "project": 6,
   "labels": {
     "approved": "approved-by-agent",
-    "qaPassed": "qa-passed"
+    "qaPassed": "qa-passed",
+    "readyToMerge": "ready-to-merge"
   },
   "mergePolicy": "solo",
   "qaSkipPaths": [

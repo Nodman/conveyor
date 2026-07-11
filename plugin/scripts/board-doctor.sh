@@ -6,6 +6,7 @@ need gh; need jq
 
 OWNER="$(cfg .owner)"; REPO="$(cfg .repo)"; PROJECT="$(cfg .project)"
 APPROVED="$(cfg '.labels.approved')"; QAPASSED="$(cfg '.labels.qaPassed')"
+READYTOMERGE="$(cfg '.labels.readyToMerge')"
 HERE="$(dirname "${BASH_SOURCE[0]}")"
 
 S_HO="$(status_name humanOnly)"; S_IP="$(status_name inProgress)"
@@ -119,7 +120,7 @@ labels=$(gh label list -R "$OWNER/$REPO" --limit 200 --json name 2>/dev/null) ||
 if [[ "$labels" == ERR ]]; then
   echo "WARN: label check failed — re-run" >&2
 else
-  for L in "$APPROVED" "$QAPASSED"; do
+  for L in "$APPROVED" "$QAPASSED" "$READYTOMERGE"; do
     present=$(jq --arg L "$L" 'any(.[]?; .name==$L)' <<<"$labels")
     if [[ "$present" != true ]]; then
       flag "label '$L' missing — fix: gh label create '$L' --force -R $OWNER/$REPO"

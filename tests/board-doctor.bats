@@ -143,6 +143,12 @@ setup_drift() { use_cfg; printf '<!-- conveyor:begin -->\n' > "$TMP/CLAUDE.md"; 
   [[ "$output" == *"label 'qa-passed' missing"* && "$output" == *"gh label create 'qa-passed' --force -R acme/widget"* ]]
 }
 
+@test "R9 missing ready-to-merge label with fix command" {
+  use_cfg
+  run_doctor doctor-drift-labels
+  [[ "$output" == *"label 'ready-to-merge' missing"* && "$output" == *"gh label create 'ready-to-merge' --force -R acme/widget"* ]]
+}
+
 # ---- pluginVersion stamp ---------------------------------------------------
 
 @test "clean run stamps pluginVersion and preserves other keys" {

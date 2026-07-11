@@ -50,3 +50,8 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
   grep -qF -- '--remove-label qa-passed' "$REPO/plugin/agents/qa-agent.md"
   grep -qF -- '--remove-label qa-passed' "$REPO/plugin/skills/executing-tasks/SKILL.md"
 }
+
+@test "ready-to-merge apply and invalidation owned by the orchestrator" {
+  grep -qF -- '--add-label ready-to-merge' "$REPO/plugin/skills/executing-tasks/SKILL.md"
+  grep -qF -- '--remove-label ready-to-merge' "$REPO/plugin/skills/executing-tasks/SKILL.md"
+}
