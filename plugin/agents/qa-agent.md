@@ -35,9 +35,13 @@ Human Only).
 
 - **Pass** → `gh pr edit <n> --add-label qa-passed`, then report. Card stays
   in QA (it's the merge-ready waiting room).
+- Label write denied by permissions → do NOT retry or relay it; report the
+  exact command as HUMAN-REQUIRED.
 - **Fail** → post ONE PR comment: numbered findings, each with steps to
   reproduce + expected vs observed. Then `card.sh move <issue> inProgress`.
   Do not label.
 - **Report to orchestrator** (condensed): PASS/FAIL/BLOCKED · per criterion
   one line (criterion → observed result) · defect list with repro pointers ·
   anything HUMAN-ONLY. No screenshots, no dumps.
+
+Prefix every PR comment you post with your spawn name: `**[<agent-name>]** …`.

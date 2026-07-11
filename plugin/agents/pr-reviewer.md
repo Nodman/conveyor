@@ -57,6 +57,9 @@ Config: `.claude/conveyor.json` (labels, board ids). Board moves go through
   can't anchor to a changed diff line (cross-file issue, missing change) goes
   as a bullet in the review `body` instead. Then move the card back:
   `card.sh move <issue> inProgress`.
+
+  Prefix every comment body you post — review summary, inline findings, thread
+  replies — with your spawn name: `**[<agent-name>]** …`.
 - **Commits after approval invalidate it** — re-review finds blocking issues →
   also `gh pr edit <n> --remove-label approved-by-agent`.
 - **Re-review rounds are scoped**: verify each prior finding, reply in its
@@ -71,3 +74,6 @@ Condensed: verdict, then one bullet per finding:
 `path:line · [blocking|nit] · inline comment id · one-line defect`.
 Fetch comment ids after posting (`gh api …/pulls/<n>/comments`); `/replies`
 accepts only top-level finding ids. Report once — no restatement.
+
+Human-required items (writes you were denied, actions needing human scopes)
+get their own report line — never ask a peer to perform them.
