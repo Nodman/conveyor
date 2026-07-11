@@ -16,3 +16,9 @@ cfg() {
 
 status_name() { cfg ".status.$1.name"; }
 status_id()   { cfg ".status.$1.id"; }
+
+warn_capped() { # $1=count $2=limit $3=what — WARN to stderr when a --limit cap is hit
+  if [[ "$1" -eq "$2" ]]; then
+    echo "WARN: $3 returned $1 == limit — results may be truncated" >&2
+  fi
+}

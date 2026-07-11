@@ -37,10 +37,12 @@ has_unblock() { # $1=issue -> "yes"/"no" for an **Unblock:** comment, or "ERR" o
   fi
 }
 
-items=$(gh project item-list "$PROJECT" --owner "$OWNER" --limit 200 --format json \
-  | jq -c '[.items[] | select(.content.type=="Issue") | {n: .content.number, status}]')
-openset=$(gh issue list -R "$OWNER/$REPO" --state open --limit 300 --json number \
-  | jq -c '[.[].number]')
+items_raw=$(gh project item-list "$PROJECT" --owner "$OWNER" --limit 200 --format json)
+warn_capped "$(jq '.items | length' <<<"$items_raw")" 200 "gh project item-list"
+items=$(jq -c '[.items[] | select(.content.type=="Issue") | {n: .content.number, status}]' <<<"$items_raw")
+open_raw=$(gh issue list -R "$OWNER/$REPO" --state open --limit 300 --json number)
+warn_capped "$(jq 'length' <<<"$open_raw")" 300 "gh issue list"
+openset=$(jq -c '[.[].number]' <<<"$open_raw")
 
 while IFS=$'\t' read -r n status; do
   isopen=$(jq -n --argjson o "$openset" --argjson n "$n" '$o | index($n) != null')
@@ -55,7 +57,7 @@ while IFS=$'\t' read -r n status; do
       "$S_AR"|"$S_IP"|"$S_QA")
         nodes=$(closing_nodes "$n")
         if [[ "$nodes" == ERR ]]; then
-          echo "WARN: #$n PR-link check failed — re-run"
+          echo "WARN: #$n PR-link check failed — re-run" >&2
         else
           opencount=$(jq '[.[] | select(.state=="OPEN")] | length' <<<"$nodes")
           approved=$(jq --arg L "$APPROVED" '[.[] | select(.state=="OPEN") | .labels.nodes[]?.name] | index($L) != null' <<<"$nodes")
@@ -74,7 +76,7 @@ while IFS=$'\t' read -r n status; do
         fi ;;
       "$S_HO")
         case "$(has_unblock "$n")" in
-          ERR) echo "WARN: #$n unblock-comment check failed — re-run" ;;
+          ERR) echo "WARN: #$n unblock-comment check failed — re-run" >&2 ;;
           no)  flag "#$n in $S_HO has no Unblock: comment" ;;
         esac ;;
     esac
@@ -94,7 +96,7 @@ if [[ -n "$discover" ]]; then
     if [[ "$present" != true ]]; then flag "config priority '$key' id $id absent from live board"; fi
   done < <(jq -r '.priority | to_entries[]? | "\(.key)\t\(.value.id)"' "$CONVEYOR_CONFIG")
 else
-  echo "WARN: config staleness check failed — re-run"
+  echo "WARN: config staleness check failed — re-run" >&2
 fi
 
 # R8: CLAUDE.md marker block — both markers or neither; one alone is broken.
@@ -109,7 +111,7 @@ fi
 # R9: configured labels must exist on the repo.
 labels=$(gh label list -R "$OWNER/$REPO" --limit 200 --json name 2>/dev/null) || labels=ERR
 if [[ "$labels" == ERR ]]; then
-  echo "WARN: label check failed — re-run"
+  echo "WARN: label check failed — re-run" >&2
 else
   for L in "$APPROVED" "$QAPASSED"; do
     present=$(jq --arg L "$L" 'any(.[]?; .name==$L)' <<<"$labels")
