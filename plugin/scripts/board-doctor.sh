@@ -110,6 +110,11 @@ else
 fi
 
 if [[ "$findings" -eq 0 ]]; then
+  installed="$(jq -r '.version // empty' "$HERE/../.claude-plugin/plugin.json" 2>/dev/null || true)"
+  if [[ -n "$installed" ]]; then
+    tmp=$(mktemp)
+    jq --arg v "$installed" '.pluginVersion = $v' "$CONVEYOR_CONFIG" > "$tmp" && mv "$tmp" "$CONVEYOR_CONFIG"
+  fi
   echo "board-doctor: no drift ($(jq length <<<"$items") issue cards checked)"
   exit 0
 fi
