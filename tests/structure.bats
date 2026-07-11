@@ -85,3 +85,10 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
   grep -qF -- 'spec-judge' "$f"
   grep -qF -- 'plan-judge' "$f"
 }
+
+@test "executing-tasks defines the auto-merge step" {
+  f="$REPO/plugin/skills/executing-tasks/SKILL.md"
+  grep -qF -- 'gh pr merge <n> --squash --delete-branch' "$f"
+  grep -qF -- 'gh pr checks' "$f"
+  grep -qF -- 'declared auto run' "$f"
+}
