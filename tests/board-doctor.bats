@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+bats_require_minimum_version 1.5.0
 load helpers/env
 
 use_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/conveyor.json"; }
@@ -82,9 +83,10 @@ setup_drift() { use_cfg; printf '<!-- conveyor:begin -->\n' > "$TMP/CLAUDE.md"; 
 
 @test "R7 config with no priority mapping flags and exits 1" {
   jq '.priority = null' "$BATS_TEST_DIRNAME/fixtures/conveyor.json" > "$TMP/.claude/conveyor.json"
-  run_doctor doctor-clean
+  GH_FIX="$BATS_TEST_DIRNAME/fixtures/doctor-clean" \
+    run --separate-stderr bash -c "cd '$TMP' && '$SCRIPTS/board-doctor.sh'"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"config has no priority mapping"* ]]
+  [[ "$output" == *"config has no priority mapping"* && "$stderr" != *"has no keys"* ]]
 }
 
 # ---- doctor-drift-pr: R3, R5 (no PR) --------------------------------------

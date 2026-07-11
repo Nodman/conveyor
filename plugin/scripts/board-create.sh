@@ -14,7 +14,7 @@ status_field=$(gh project field-list "$number" --owner "$owner" --format json \
 
 # Full replacement is safe here: the project is brand new (no items carry values yet).
 jq -n --arg fid "$status_field" '{
-  query: "mutation UpdateStatusOptions($fieldId: ID!, $opts: [ProjectV2SingleSelectFieldOptionInput!]) { updateProjectV2Field(input: {fieldId: $fieldId, singleSelectOptions: $opts}) { projectV2Field { ... on ProjectV2SingleSelectField { id } } } }",
+  query: "mutation UpdateStatusOptions($fieldId: ID!, $opts: [ProjectV2SingleSelectFieldOptionInput!]!) { updateProjectV2Field(input: {fieldId: $fieldId, singleSelectOptions: $opts}) { projectV2Field { ... on ProjectV2SingleSelectField { id } } } }",
   variables: { fieldId: $fid, opts: [
     {name:"Human Only",color:"PINK",description:"Blocked on a human action"},
     {name:"Backlog",color:"GRAY",description:"Not dev-ready"},
@@ -27,7 +27,7 @@ jq -n --arg fid "$status_field" '{
   ]}}' | gh api graphql --input - >/dev/null
 
 jq -n --arg pid "$pid" '{
-  query: "mutation CreatePriorityField($projectId: ID!, $opts: [ProjectV2SingleSelectFieldOptionInput!]) { createProjectV2Field(input: {projectId: $projectId, dataType: SINGLE_SELECT, name: \"Priority\", singleSelectOptions: $opts}) { projectV2Field { ... on ProjectV2SingleSelectField { id } } } }",
+  query: "mutation CreatePriorityField($projectId: ID!, $opts: [ProjectV2SingleSelectFieldOptionInput!]!) { createProjectV2Field(input: {projectId: $projectId, dataType: SINGLE_SELECT, name: \"Priority\", singleSelectOptions: $opts}) { projectV2Field { ... on ProjectV2SingleSelectField { id } } } }",
   variables: { projectId: $pid, opts: [
     {name:"P1",color:"RED",description:""},
     {name:"P2",color:"YELLOW",description:""},

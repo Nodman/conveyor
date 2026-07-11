@@ -1,0 +1,18 @@
+{
+  "fields": [
+    { "id": "PVTF_title", "name": "Title", "type": "ProjectV2Field" },
+    { "id": "PVTSSF_status", "name": "Status", "type": "ProjectV2SingleSelectField",
+      "options": [
+        { "id": "opt_td", "name": "Todo" },
+        { "id": "opt_ip", "name": "In Progress" },
+        { "id": "opt_dn", "name": "Done" }
+      ] },
+    { "id": "PVTSSF_prio", "name": "Priority", "type": "ProjectV2SingleSelectField",
+      "options": [
+        { "id": "opt_p1", "name": "P1" },
+        { "id": "opt_p2", "name": "P2" },
+        { "id": "opt_p3", "name": "P3" }
+      ] }
+  ],
+  "totalCount": 2
+}

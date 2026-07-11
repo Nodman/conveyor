@@ -30,7 +30,8 @@ bad_key="$(jq -r --argjson canon "$canon" \
 
 # Field id from field-list (ids are reliable here); option details come from a node query,
 # because `field-list --format json` only returns {id,name} per option (no color/description).
-fields="$(gh project field-list "$number" --owner "$owner" --format json)"
+fields="$(gh project field-list "$number" --owner "$owner" --limit 100 --format json)"
+warn_capped "$(jq '.fields | length' <<<"$fields")" 100 "gh project field-list"
 fid="$(jq -r '.fields[] | select(.name=="Status") | .id' <<<"$fields")"
 [[ -n "$fid" && "$fid" != "null" ]] || die "no Status field on project $number"
 
@@ -63,6 +64,10 @@ opts="$(jq -n --argjson existing "$existing" --argjson map "$mapping" --argjson 
   )) | map({name, color, description})) as $appended |
   $kept + $appended')"
 
+# A rename target that collides with a different existing option yields two same-named entries.
+dupes="$(jq -rn --argjson opts "$opts" '[$opts[].name] | group_by(.)[] | select(length>1) | .[0]')"
+[[ -z "$dupes" ]] || die "mapping produces duplicate option name(s): $(tr '\n' ' ' <<<"$dupes") — a rename target collides with an existing column"
+
 jq -n --arg fid "$fid" --argjson opts "$opts" '{
   query: "mutation UpdateStatusOptions($fieldId: ID!, $opts: [ProjectV2SingleSelectFieldOptionInput!]!) { updateProjectV2Field(input: {fieldId: $fieldId, singleSelectOptions: $opts}) { projectV2Field { ... on ProjectV2SingleSelectField { id } } } }",
   variables: { fieldId: $fid, opts: $opts }
@@ -72,7 +77,7 @@ jq -n --arg fid "$fid" --argjson opts "$opts" '{
 if [[ -z "$(jq -r '.fields[] | select(.name=="Priority") | .id' <<<"$fields")" ]]; then
   pid="$(gh project view "$number" --owner "$owner" --format json | jq -r '.id')"
   jq -n --arg pid "$pid" '{
-    query: "mutation CreatePriorityField($projectId: ID!, $opts: [ProjectV2SingleSelectFieldOptionInput!]) { createProjectV2Field(input: {projectId: $projectId, dataType: SINGLE_SELECT, name: \"Priority\", singleSelectOptions: $opts}) { projectV2Field { ... on ProjectV2SingleSelectField { id } } } }",
+    query: "mutation CreatePriorityField($projectId: ID!, $opts: [ProjectV2SingleSelectFieldOptionInput!]!) { createProjectV2Field(input: {projectId: $projectId, dataType: SINGLE_SELECT, name: \"Priority\", singleSelectOptions: $opts}) { projectV2Field { ... on ProjectV2SingleSelectField { id } } } }",
     variables: { projectId: $pid, opts: [
       {name:"P1",color:"RED",description:""},
       {name:"P2",color:"YELLOW",description:""},

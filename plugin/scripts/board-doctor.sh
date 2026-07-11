@@ -100,7 +100,7 @@ if [[ -n "$discover" ]]; then
   while IFS=$'\t' read -r key id; do
     present=$(jq -n --argjson l "$live" --arg id "$id" '$l | index($id) != null')
     if [[ "$present" != true ]]; then flag "config priority '$key' id $id absent from live board"; fi
-  done < <(jq -r '.priority | to_entries[]? | "\(.key)\t\(.value.id)"' "$CONVEYOR_CONFIG")
+  done < <(jq -r '.priority // {} | to_entries[] | "\(.key)\t\(.value.id)"' "$CONVEYOR_CONFIG")
 else
   echo "WARN: config staleness check failed — re-run" >&2
 fi

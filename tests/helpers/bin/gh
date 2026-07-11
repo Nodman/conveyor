@@ -13,7 +13,7 @@ if [[ "${1:-}" == "api" && "${2:-}" == "graphql" ]]; then
   shopt -s nullglob
   for f in "$GH_FIX"/graphql_*.out; do
     op="$(basename "$f")"; op="${op#graphql_}"; op="${op%.out}"
-    if [[ "$body" == *"$op"* ]]; then cat "$f"; exit 0; fi
+    if [[ "$body" == *"query $op("* || "$body" == *"mutation $op("* ]]; then cat "$f"; exit 0; fi
   done
   echo "gh-stub: no graphql fixture matching: $body" >&2; exit 64
 fi
