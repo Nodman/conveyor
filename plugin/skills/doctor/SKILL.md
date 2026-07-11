@@ -8,7 +8,11 @@ description: Use at task pickup, when a board card looks wrong, or after config/
 1. Run `${CLAUDE_PLUGIN_ROOT}/scripts/board-doctor.sh` from the repo root.
 2. Session-level checks the script can't do:
    - superpowers skills present in your available-skills list → flag (conveyor
-     replaces it; user should disable it for this project).
+     replaces it). Fix: `claude plugin disable <id> --scope project` — use the
+     plugin id from the session's skill list (e.g.
+     `superpowers@claude-plugins-official`); it writes the override to project
+     `.claude/settings.json`. Ask the user first, never write settings
+     silently; takes effect next session.
    - `.claude/skills/running-the-app` / `running-tests` missing or still
      containing `<!-- FILL -->` → flag (QA is blocked without them).
    - `.claude/settings.json` permissions.allow missing any of
