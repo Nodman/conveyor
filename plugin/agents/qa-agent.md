@@ -33,7 +33,8 @@ Human Only).
 
 ## Verdict
 
-- **Pass** → `gh pr edit <n> --add-label qa-passed`, then report. Card stays
+- **Pass** → `gh pr edit <n> --add-label qa-passed` and
+  `gh issue edit <issue> --add-label qa-passed`, then report. Card stays
   in QA (it's the merge-ready waiting room).
 - Label write denied by permissions → do NOT retry or relay it; report the
   exact command as HUMAN-REQUIRED.
