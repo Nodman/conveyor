@@ -21,14 +21,16 @@ step on a repo that already has related state.
      `board-reconcile.sh OWNER N <mapping.json>`. The mapping file is a JSON
      object of canonical key → EXISTING column name, e.g.
      `{"backlog": "Todo", "done": "Done"}`; unmapped canonical states get
-     created. Renames preserve item values (matched by option id).
+     created. Renames preserve item values (matched by option id). After the
+     status mapping, reconcile also creates the canonical Priority field
+     (P1/P2/P3) if the board has none.
 3. **Manual checklist.** Print — the API cannot set these; the user does them
    in the board UI once: enable "Item added to project → Backlog"; enable
    "Item closed → Done"; ensure "Pull request linked → …" workflows stay
    DISABLED (re-enabling re-moves merged cards). Ask the user to confirm done.
 4. **Config.** Re-run `board-discover.sh` post-reconcile; write
    `.claude/conveyor.json` (schema in the plugin README; mergePolicy: ask
-   solo vs maintainers). Verify every status key has an id.
+   solo vs maintainers). Verify every status and priority key has an id.
    Include `"pluginVersion"`: the installed plugin's version
    (`jq -r .version ${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`) — the
    session-start hook compares it to nudge `/conveyor:doctor` after updates.
