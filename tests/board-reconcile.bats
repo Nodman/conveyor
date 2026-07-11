@@ -69,6 +69,14 @@ load helpers/env
   [[ "$output" == *"duplicate option name"* ]]
 }
 
+@test "reconcile rejects a mapping whose values repeat" {
+  echo '{"done":"Done","qa":"Done"}' > "$TMP/map.json"
+  GH_FIX="$BATS_TEST_DIRNAME/fixtures/reconcile" \
+    run "$SCRIPTS/board-reconcile.sh" acme 7 "$TMP/map.json"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"duplicate mapping value"* ]]
+}
+
 @test "reconcile rejects an unknown canonical key" {
   echo '{"notAState":"Todo"}' > "$TMP/map.json"
   GH_FIX="$BATS_TEST_DIRNAME/fixtures/reconcile" \
