@@ -4,11 +4,12 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 need gh; need jq
 
-dry=0; grant_perms=0
+dry=0; grant_perms=0; grant_auto=0
 for a in "$@"; do
   case "$a" in
     --dry-run) dry=1 ;;
     --grant-label-perms) grant_perms=1 ;;
+    --grant-auto-merge) grant_auto=1 ;;
     *) die "unknown flag: $a" ;;
   esac
 done
@@ -87,6 +88,23 @@ if [[ $grant_perms -eq 1 ]]; then
     rule="Conveyor board lifecycle writes to this project's own GitHub repo are pre-authorized by the user's standing workflow (CLAUDE.md): gh issue create/comment/edit, gh pr create/comment/edit, label add/remove, board card moves via gh project or card.sh, and pushing feature branches. This includes filing backlog issues for out-of-scope findings discovered during a task — the workflow mandates it. Merging PRs and moving cards to Done remain human-only and are NOT covered."
     jq --arg rule "$rule" '.permissions.allow = ((.permissions.allow // []) +
         (["Bash(gh pr edit:*)","Bash(gh issue edit:*)","Bash(gh issue comment:*)","Bash(gh issue create:*)"] - (.permissions.allow // [])))
+      | .autoMode.allow = ((.autoMode.allow // []) +
+        (["$defaults", $rule] - (.autoMode.allow // [])))' \
+      "$s" > "$tmp" && mv "$tmp" "$s"
+  fi
+fi
+
+# 8. Auto-merge permissions — opt-in only (consent = per-run agreement prompt in the work skill).
+if [[ $grant_auto -eq 1 ]]; then
+  say "grant auto-merge permissions in .claude/settings.json"
+  if [[ $dry -eq 0 ]]; then
+    mkdir -p .claude
+    s=.claude/settings.json
+    [[ -s "$s" ]] || echo '{}' > "$s"
+    tmp=$(mktemp)
+    rule="During a declared '/conveyor:auto' run the user has explicitly agreed, via the per-run prompt, to autonomous operation: squash-merging PRs that carry the ready-to-merge label (gh pr merge --squash --delete-branch) and judge-agent self-approval of specs and plans are pre-authorized. Outside a declared auto run, merging PRs stays human-only. Moving cards to Done is never agent-performed — board automation owns it."
+    jq --arg rule "$rule" '.permissions.allow = ((.permissions.allow // []) +
+        (["Bash(gh pr merge:*)"] - (.permissions.allow // [])))
       | .autoMode.allow = ((.autoMode.allow // []) +
         (["$defaults", $rule] - (.autoMode.allow // [])))' \
       "$s" > "$tmp" && mv "$tmp" "$s"

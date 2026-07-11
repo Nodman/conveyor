@@ -13,3 +13,11 @@ Each entry: `## YYYY-MM-DD — <topic>` followed by bullets — chose X over Y, 
 - Every agent-authored PR/issue comment carries a `**[<agent-name>]**` prefix.
 - Plugin PRs bump the `plugin.json` patch version; consumers pull via
   `claude plugin marketplace update` + `claude plugin update`.
+
+## 2026-07-11 — Autonomous mode is a separate skill
+
+- `/conveyor:auto` over an `auto` argument on `/conveyor:work`, because
+  merge-authorizing prose must be absent from plain-run context — absence is
+  a harder gate than a mode conditional (drift/compaction can lose a flag).
+- The only shared fork is executing-tasks' Auto-merge step, gated by the
+  "declared auto run" sentence in the lead's spawn prompt.

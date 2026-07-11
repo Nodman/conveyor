@@ -71,13 +71,32 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    (`gh pr edit <n> --add-label ready-to-merge` and `gh issue edit <issue>
    --add-label ready-to-merge`), then report merge-ready to the human:
    PR link + one-line summary + labels present. `ready-to-merge` is the
-   orchestrator's alone — no subagent applies it. **A human merges. Never
-   merge, never move a card to Done.**
+   orchestrator's alone — no subagent applies it. **Plain runs: a human merges — never merge.
+   Declared auto runs (your spawn prompt says so): run the Auto-merge step
+   below. Never move a card to Done in any mode.**
 6. **Commits after a QA pass invalidate it** — new commits pushed after
    `qa-passed` → remove it and `ready-to-merge` (`gh pr edit <n>
    --remove-label qa-passed --remove-label ready-to-merge` and `gh issue edit
    <issue> --remove-label qa-passed --remove-label ready-to-merge`) and re-run
    QA.
+
+## Auto-merge step (declared auto runs only)
+
+Runs after `ready-to-merge` is applied; every earlier gate is unchanged.
+
+1. Preconditions: `gh pr checks <n>` all green, and no unresolved
+   `**Human required:**` checklist on the PR. Either fails → `card.sh move
+   <issue> humanOnly` + `**Unblock:**` comment, report `blocked`, stop.
+2. Merge conflict → rebase inside the issue worktree (`git -C <path>`,
+   docs/gotchas/worktrees.md), `git push --force-with-lease`. The push
+   invalidates `qa-passed` (rule above) → re-run QA → retry the merge once;
+   second failure → humanOnly as in step 1.
+3. `git worktree remove` the issue worktree first — all gates have passed, so
+   it is no longer needed, and a branch checked out in a worktree can't be
+   `--delete-branch`d. Then run
+   `gh pr merge <n> --squash --delete-branch`. `Fixes #<issue>` closes the
+   issue; board automation moves the card to Done — never move it yourself.
+   Report `merged <sha>`.
 
 ## Human-required follow-ups
 

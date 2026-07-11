@@ -2,7 +2,8 @@
 
 A Claude Code plugin that turns any GitHub-connected repo into an agent-driven
 delivery pipeline. One board, one lifecycle: **brainstorm → spec → plan → TDD
-execution → PR review → QA → human merge**. Install once, use in any repo — the
+execution → PR review → QA → human merge** (or autonomous merge in a
+`/conveyor:auto` run). Install once, use in any repo — the
 per-repo footprint is config + docs, no stack code shipped.
 
 Board columns, in order:
@@ -108,7 +109,23 @@ The definition of *done* for one task (`/conveyor:work` runs the loop):
 8. All gates passed → the orchestrator applies `ready-to-merge` to the PR + issue
    and reports the PR as merge-ready. **A human merges** — the merge closes
    the issue and automation moves the card to **Done**. Agents never merge and
-   never set Done by hand.
+   never set Done by hand. In an auto run the orchestrator merges instead — see
+   Autonomous mode.
+
+## Autonomous mode
+
+`/conveyor:auto` drains the board without human gates, for this run only:
+
+- Every run opens with an explicit agreement prompt ("I agree — autonomous
+  run: …"); first run also scaffolds `scaffold.sh --grant-auto-merge`
+  (adds `Bash(gh pr merge:*)` + an autoMode rule to `.claude/settings.json`).
+- Dispatcher pattern: a fresh lead subagent per card runs the full lifecycle
+  and squash-merges once CI is green and `ready-to-merge` is applied.
+- Ready for dev empty → Backlog triage: groomed issues promoted, feature-sized
+  ones spec'd and planned with **spec-judge** / **plan-judge** approval gates
+  (2 rejections → Human Only), human-needed ones parked in Human Only.
+- Human Only is never a work source. Cards are never moved to Done by agents.
+- Brake: 3 consecutive cards without a merge → the run stops and reports.
 
 ## Project skills contract
 

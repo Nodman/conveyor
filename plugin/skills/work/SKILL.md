@@ -17,3 +17,5 @@ description: Use when the human says "work on the project / pick up the next tas
    to conveyor:executing-tasks.
 5. Definition of done = executing-tasks' merge-ready report. Repeat from
    step 2 only if the human asked for continuous pickup.
+6. Autonomous runs (no human gates, auto-merge) are a separate skill —
+   conveyor:auto. Never run auto behavior from this skill.

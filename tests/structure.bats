@@ -66,3 +66,31 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
   grep -qF -- 'git worktree add .claude/worktrees/' "$f"
   grep -qF -- 'git worktree remove' "$f"
 }
+
+@test "judge agents exist, prefix their comments, and never edit" {
+  for f in "$REPO/plugin/agents/spec-judge.md" "$REPO/plugin/agents/plan-judge.md"; do
+    [ -f "$f" ]
+    grep -qF -- 'never edit' "$f"
+  done
+  grep -qF -- '**[spec-judge]**' "$REPO/plugin/agents/spec-judge.md"
+  grep -qF -- '**[plan-judge]**' "$REPO/plugin/agents/plan-judge.md"
+}
+
+@test "auto skill owns the auto-mode contract; work skill stays merge-free" {
+  f="$REPO/plugin/skills/auto/SKILL.md"
+  grep -qF -- 'I agree' "$f"
+  grep -qF -- '--grant-auto-merge' "$f"
+  grep -qF -- 'never a work source' "$f"
+  grep -qF -- '3 consecutive' "$f"
+  grep -qF -- 'spec-judge' "$f"
+  grep -qF -- 'plan-judge' "$f"
+  grep -qF -- 'conveyor:auto' "$REPO/plugin/skills/work/SKILL.md"
+  ! grep -qF -- 'gh pr merge' "$REPO/plugin/skills/work/SKILL.md"
+}
+
+@test "executing-tasks defines the auto-merge step" {
+  f="$REPO/plugin/skills/executing-tasks/SKILL.md"
+  grep -qF -- 'gh pr merge <n> --squash --delete-branch' "$f"
+  grep -qF -- 'gh pr checks' "$f"
+  grep -qF -- 'declared auto run' "$f"
+}
