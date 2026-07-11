@@ -60,5 +60,6 @@
   "mergePolicy": "solo",
   "qaSkipPaths": [
     "docs/**"
-  ]
+  ],
+  "pluginVersion": "0.1.2"
 }
