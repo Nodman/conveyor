@@ -48,3 +48,40 @@ setup() {
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
+
+@test "session-start: conveyor repo with matching stamp → no nudge" {
+  t="$(mktemp -d)"; mkdir -p "$t/.claude"
+  v="$(jq -r .version "$BATS_TEST_DIRNAME/../plugin/.claude-plugin/plugin.json")"
+  printf '{"pluginVersion":"%s"}' "$v" > "$t/.claude/conveyor.json"
+  run bash -c "cd '$t' && printf '%s' '{\"source\":\"startup\"}' | '$HOOKS/session-start.sh'"
+  [ "$status" -eq 0 ]
+  ctx="$(echo "$output" | jq -r '.hookSpecificOutput.additionalContext')"
+  rm -rf "$t"
+  [[ "$ctx" == *"working principles"* ]]
+  [[ "$ctx" != *"run /conveyor:doctor to reconcile"* ]]
+}
+
+@test "session-start: stale or missing stamp → nudge with versions" {
+  t="$(mktemp -d)"; mkdir -p "$t/.claude"
+  printf '{"pluginVersion":"0.0.1"}' > "$t/.claude/conveyor.json"
+  run bash -c "cd '$t' && printf '%s' '{\"source\":\"startup\"}' | '$HOOKS/session-start.sh'"
+  [ "$status" -eq 0 ]
+  ctx="$(echo "$output" | jq -r '.hookSpecificOutput.additionalContext')"
+  [[ "$ctx" == *"conveyor plugin updated 0.0.1 → "* ]]
+  [[ "$ctx" == *"run /conveyor:doctor to reconcile."* ]]
+  printf '{}' > "$t/.claude/conveyor.json"
+  run bash -c "cd '$t' && printf '%s' '{\"source\":\"startup\"}' | '$HOOKS/session-start.sh'"
+  ctx="$(echo "$output" | jq -r '.hookSpecificOutput.additionalContext')"
+  rm -rf "$t"
+  [[ "$ctx" == *"conveyor plugin updated unstamped → "* ]]
+}
+
+@test "session-start: no conveyor.json → no nudge" {
+  t="$(mktemp -d)"
+  run bash -c "cd '$t' && printf '%s' '{\"source\":\"startup\"}' | '$HOOKS/session-start.sh'"
+  [ "$status" -eq 0 ]
+  ctx="$(echo "$output" | jq -r '.hookSpecificOutput.additionalContext')"
+  rm -rf "$t"
+  [[ "$ctx" == *"working principles"* ]]
+  [[ "$ctx" != *"reconcile"* ]]
+}

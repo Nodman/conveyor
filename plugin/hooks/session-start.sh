@@ -21,5 +21,14 @@ Process gate: a human work request starts with /conveyor:brainstorming (scale it
 If .claude/conveyor.json exists: this repo runs the conveyor board lifecycle — see the Conveyor section of CLAUDE.md; /conveyor:work to pick up tasks, /conveyor:doctor when a card looks wrong.
 EOF
 
+if [[ -f .claude/conveyor.json ]]; then
+  here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  installed="$(jq -r '.version // empty' "$here/../.claude-plugin/plugin.json" 2>/dev/null || true)"
+  stamped="$(jq -r '.pluginVersion // empty' .claude/conveyor.json 2>/dev/null || true)"
+  if [[ -n "$installed" && "$stamped" != "$installed" ]]; then
+    text+=$'\n\n'"conveyor plugin updated ${stamped:-unstamped} → $installed since this repo was configured — run /conveyor:doctor to reconcile."
+  fi
+fi
+
 jq -n --arg ctx "$text" \
   '{hookSpecificOutput:{hookEventName:"SessionStart",additionalContext:$ctx}}'
