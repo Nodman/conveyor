@@ -29,8 +29,10 @@ only; a plain `/conveyor:work` afterwards is human-gated again.
    triage issues without asking me." Decline → offer a plain run and stop.
    The agreement in-session is what pre-authorizes the merge writes.
 2. **Permissions — once per repo.** If `.claude/settings.json` lacks
-   `Bash(gh pr merge:*)` in `permissions.allow`, run
-   `${CLAUDE_PLUGIN_ROOT}/scripts/scaffold.sh --grant-auto-merge`.
+   `Bash(gh pr merge:*)` in `permissions.allow` OR lacks the auto-run rule
+   in `autoMode.allow`, run
+   `${CLAUDE_PLUGIN_ROOT}/scripts/scaffold.sh --grant-auto-merge` (it is
+   idempotent — when in doubt, run it).
 3. **Dispatch loop.** You are the dispatcher: never orchestrate a card
    yourself, keep only per-card reports in context.
    - `/conveyor:doctor` once at start.
@@ -52,8 +54,13 @@ only; a plain `/conveyor:work` afterwards is human-gated again.
    - human → `card.sh move <n> humanOnly` + `**Unblock:**` comment
    - needs-spec → spawn a spec-lead: write the spec (brainstorming skill
      format; decisions come from the issue + docs, no human Q&A) →
-     spec-judge gate → conveyor:writing-plans → plan-judge gate → slice to
-     Ready cards. A judge rejection gets one fix round; 2 rejections on the
-     same artifact → `card.sh move <n> humanOnly` with the draft linked.
+     spec-judge gate → conveyor:writing-plans → plan-judge gate. On
+     approval, place the work: single-PR plan → move the ORIGINAL issue to
+     Ready with the spec/plan linked in a comment (it becomes the work
+     card); multi-PR plan → file one issue per slice, comment the slice
+     links on the original, then close the original as superseded (board
+     automation moves it to Done — you never move the card yourself). A
+     judge rejection gets one fix round; 2 rejections on the same artifact →
+     `card.sh move <n> humanOnly` with the draft linked.
 5. **Sources.** Work is read ONLY from Ready for dev and Backlog. Human Only
    is write-only parking — never a work source. Never move any card to Done.
