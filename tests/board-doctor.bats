@@ -57,6 +57,22 @@ setup_drift() { use_cfg; printf '<!-- conveyor:begin -->\n' > "$TMP/CLAUDE.md"; 
   [[ "$output" == *"CLAUDE.md conveyor marker block is broken"* ]]
 }
 
+# ---- R6/R7 API-failure robustness -----------------------------------------
+
+@test "R6 unblock-comment check failure WARNs, does not flag, exits 0" {
+  use_cfg
+  run_doctor doctor-r6-viewfail
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"WARN: #50 unblock-comment check failed — re-run"* && "$output" != *"in Human Only has no Unblock: comment"* ]]
+}
+
+@test "R7 config staleness check failure WARNs and exits 0" {
+  use_cfg
+  run_doctor doctor-r7-discoverfail
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"WARN: config staleness check failed — re-run"* ]]
+}
+
 # ---- doctor-drift-pr: R3, R5 (no PR) --------------------------------------
 
 @test "pr set exits 1" {

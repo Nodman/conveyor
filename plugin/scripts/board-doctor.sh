@@ -27,9 +27,14 @@ closing_nodes() { # $1=issue -> nodes JSON array, or "ERR" on API failure
   printf '%s' "$nodes"
 }
 
-has_unblock() { # $1=issue -> 0 if an issue comment body starts with **Unblock:**
-  gh issue view "$1" -R "$OWNER/$REPO" --json comments 2>/dev/null \
-    | jq -e '[.comments[]? | select(.body | startswith("**Unblock:**"))] | length > 0' >/dev/null
+has_unblock() { # $1=issue -> "yes"/"no" for an **Unblock:** comment, or "ERR" on API failure
+  local raw
+  raw=$(gh issue view "$1" -R "$OWNER/$REPO" --json comments 2>/dev/null) || { echo ERR; return; }
+  if jq -e '[.comments[]? | select(.body | startswith("**Unblock:**"))] | length > 0' <<<"$raw" >/dev/null 2>&1; then
+    echo yes
+  else
+    echo no
+  fi
 }
 
 items=$(gh project item-list "$PROJECT" --owner "$OWNER" --limit 200 --format json \
@@ -68,7 +73,10 @@ while IFS=$'\t' read -r n status; do
           esac
         fi ;;
       "$S_HO")
-        if ! has_unblock "$n"; then flag "#$n in $S_HO has no Unblock: comment"; fi ;;
+        case "$(has_unblock "$n")" in
+          ERR) echo "WARN: #$n unblock-comment check failed — re-run" ;;
+          no)  flag "#$n in $S_HO has no Unblock: comment" ;;
+        esac ;;
     esac
   fi
 done < <(jq -r '.[] | "\(.n)\t\(.status)"' <<<"$items")
@@ -85,6 +93,8 @@ if [[ -n "$discover" ]]; then
     present=$(jq -n --argjson l "$live" --arg id "$id" '$l | index($id) != null')
     if [[ "$present" != true ]]; then flag "config priority '$key' id $id absent from live board"; fi
   done < <(jq -r '.priority | to_entries[]? | "\(.key)\t\(.value.id)"' "$CONVEYOR_CONFIG")
+else
+  echo "WARN: config staleness check failed — re-run"
 fi
 
 # R8: CLAUDE.md marker block — both markers or neither; one alone is broken.
