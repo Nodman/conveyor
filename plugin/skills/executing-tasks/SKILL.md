@@ -81,7 +81,11 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    in the prompt).
 3. Blocking findings: route each to the executor that wrote it (resume by
    name), with path:line + comment id. Executor fixes, pushes, replies in the
-   finding's thread with the fix sha. Card back to agentReview; route the
+   finding's thread with the fix sha. Codex-authored finding → the
+   orchestrator resumes the codex session by id with the finding (path:line +
+   defect); codex fixes in the worktree; the orchestrator reruns tests as
+   needed, commits, pushes, and replies in the finding's thread with the fix
+   sha under its own name. Card back to agentReview; route the
    re-review to the SAME reviewer (resume by name — it keeps round-1
    context); spawn fresh with the scoped prompt only if it's gone.
 4. Approved → decide QA applicability (your judgment is primary): diff has a
