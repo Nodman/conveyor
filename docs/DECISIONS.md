@@ -2,6 +2,19 @@
 
 Each entry: `## YYYY-MM-DD — <topic>` followed by bullets — chose X over Y, because…
 
+## 2026-07-12 — Model routing lives inside conveyor
+
+- Routing skill ships in `plugin/skills/routing/`, not a second plugin
+  (reverses the council-session two-plugin plan), because a routing-only
+  install has no runner — policy without execution is useless standalone.
+  Extract later if a second real consumer appears.
+- Routing rules and pool are human-editable markdown (skill + references +
+  optional `.claude/routing.md` override) — no JSON knobs, no setup wizard.
+- No dollar/plan cost modeling: both providers are flat-rate subscriptions;
+  rank models by capability (benchmarks preferred), treat quotas as pools
+  with fallback on throttle.
+- Council verdict + full debate archived in `.conveyor/council-routing/`.
+
 ## 2026-07-11 — Lifecycle hygiene rulings
 
 - Label permissions: granted only via `scaffold.sh --grant-label-perms` after
