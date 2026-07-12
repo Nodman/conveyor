@@ -145,7 +145,10 @@ run_codex() {
 #!/usr/bin/env bash
 echo "=== $name ==="
 $cd_line
-$codex_cmd $sandbox -o $out - < $prompt_file 2>&1 | tee $log
+printf '\e[2m--- prompt ---\n'
+cat $prompt_file
+printf '--------------\e[0m\n'
+$codex_cmd $sandbox --json -o $out - < $prompt_file 2>&1 | $SCRIPT_DIR/codex-exec.sh render $log $out
 echo "\${PIPESTATUS[0]}" > $sentinel
 EOF
   chmod +x "$runner"

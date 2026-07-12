@@ -78,6 +78,9 @@ wait_sentinel() { # $1=path — poll up to ~5s
   wait_sentinel "$TMP/r1.md.done"
   [ -f "$TMP/r1.md" ]
   [ "$(cat "$TMP/r1.md.done")" = "0" ]
+  [ "$(grep -c '^session id: ' "$TMP/r1.log")" = "1" ]
+  run bash -c "LC_ALL=C grep -q \$'\x1b' '$TMP/r1.log'"
+  [ "$status" -ne 0 ]
   run bash -c "'$SCRIPTS/codex-exec.sh' session-id '$TMP/r1.log'"
   [ "$output" = "0000-mock-session" ]
 }
@@ -89,7 +92,7 @@ wait_sentinel() { # $1=path — poll up to ~5s
   wait_sentinel "$TMP/r1.md.done"
   run grep -F 'codex exec' "$RUN_LOG"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"-s read-only"* && "$output" == *"-m gpt-5.6-sol"* && "$output" == *"-o $TMP/r1.md"* ]]
+  [[ "$output" == *"-s read-only"* && "$output" == *"-m gpt-5.6-sol"* && "$output" == *"-o $TMP/r1.md"* && "$output" == *"--json"* ]]
 }
 
 @test "run tmux mode: pane spawned with runner script" {
@@ -105,7 +108,7 @@ wait_sentinel() { # $1=path — poll up to ~5s
   # don't execute it: the appended 'sleep 10' linger would stall the suite
   run cat "$TMP/r1.run.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"codex exec"* && "$output" == *"> $TMP/r1.md.done"* && "$output" == *"sleep 10"* ]]
+  [[ "$output" == *"codex exec"* && "$output" == *"> $TMP/r1.md.done"* && "$output" == *"sleep 10"* && "$output" == *"--json"* && "$output" == *"codex-exec.sh render $TMP/r1.log"* ]]
 }
 
 @test "run window mode: osascript Terminal spawn" {
@@ -128,7 +131,7 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [ "$(cat "$TMP/r2.md.done")" = "0" ]
   run cat "$TMP/r2.run.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *'codex exec resume 0000-mock-session'* && "$output" == *'sandbox_mode="read-only"'* && "$output" != *'-s read-only'* && "$output" != *'--last'* ]]
+  [[ "$output" == *'codex exec resume 0000-mock-session'* && "$output" == *'sandbox_mode="read-only"'* && "$output" != *'-s read-only'* && "$output" != *'--last'* && "$output" == *"--json"* ]]
 }
 
 @test "run without required args → usage" {
@@ -257,4 +260,15 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [ "$status" -eq 0 ]
   [ "$(grep -cF "report: $TMP/o.md" <<<"$output")" = "1" ]
   [[ "$output" == *'first msg'* && "$output" == *'must not be truncated'* ]]
+}
+
+@test "run: failing codex → sentinel nonzero, garbage logged, renderer survives" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX MOCK_CODEX_FAIL=3 '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/f1.md' --prompt-file '$TMP/p.txt'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/f1.md.done"
+  [ "$(cat "$TMP/f1.md.done")" = "3" ]
+  run grep -cF 'Not inside a trusted directory' "$TMP/f1.log"
+  [[ "$output" == "1" ]]
 }
