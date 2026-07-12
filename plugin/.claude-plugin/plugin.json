@@ -2,9 +2,7 @@
   "name": "conveyor",
   "version": "0.1.20",
   "description": "GitHub Projects agent delivery pipeline: brainstorm → spec → plan → TDD execution → PR review → QA → human merge (autonomous merge opt-in via /conveyor:auto).",
-  "author": {
-    "name": "Dmytro Burmistrov"
-  },
+  "author": { "name": "Dmytro Burmistrov" },
   "license": "MIT",
   "repository": "https://github.com/Nodman/conveyor"
 }
