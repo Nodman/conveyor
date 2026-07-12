@@ -87,3 +87,13 @@ setup() {
   rm -rf "$t"
   [[ "$ctx" == *"working principles"* && "$ctx" != *"reconcile"* ]]
 }
+
+@test "session-start: stamp newer than installed → plugin-update nudge, not doctor" {
+  t="$(mktemp -d)"; mkdir -p "$t/.claude"
+  printf '{"pluginVersion":"999.0.0"}' > "$t/.claude/conveyor.json"
+  run bash -c "cd '$t' && printf '%s' '{\"source\":\"startup\"}' | '$HOOKS/session-start.sh'"
+  [ "$status" -eq 0 ]
+  ctx="$(echo "$output" | jq -r '.hookSpecificOutput.additionalContext')"
+  rm -rf "$t"
+  [[ "$ctx" == *"this repo expects conveyor 999.0.0"* && "$ctx" == *"claude plugin update conveyor"* && "$ctx" != *"run /conveyor:doctor to reconcile"* ]]
+}
