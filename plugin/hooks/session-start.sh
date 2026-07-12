@@ -26,7 +26,11 @@ if [[ -f .claude/conveyor.json ]]; then
   installed="$(jq -r '.version // empty' "$here/../.claude-plugin/plugin.json" 2>/dev/null || true)"
   stamped="$(jq -r '.pluginVersion // empty' .claude/conveyor.json 2>/dev/null || true)"
   if [[ -n "$installed" && "$stamped" != "$installed" ]]; then
-    text+=$'\n\n'"conveyor plugin updated ${stamped:-unstamped} → $installed since this repo was configured — run /conveyor:doctor to reconcile."
+    if [[ -n "$stamped" && "$(printf '%s\n%s\n' "$installed" "$stamped" | sort -V | tail -n1)" == "$stamped" ]]; then
+      text+=$'\n\n'"this repo expects conveyor $stamped, you have $installed — run \`claude plugin update conveyor\`."
+    else
+      text+=$'\n\n'"conveyor plugin updated ${stamped:-unstamped} → $installed since this repo was configured — run /conveyor:doctor to reconcile."
+    fi
   fi
 fi
 

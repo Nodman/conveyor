@@ -197,11 +197,29 @@ setup_drift() { use_cfg; printf '<!-- conveyor:begin -->\n' > "$TMP/CLAUDE.md"; 
   [ "$(jq -r .owner "$TMP/.claude/conveyor.json")" = "$before_owner" ]
 }
 
-@test "drift run leaves pluginVersion untouched" {
+@test "clean run reports stamp and commit reminder" {
+  use_cfg
+  run_doctor doctor-clean
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"stamped pluginVersion"* ]]
+  [[ "$output" == *"commit .claude/conveyor.json"* ]]
+}
+
+@test "drift run still stamps pluginVersion" {
   setup_drift
   run_doctor doctor-drift
   [ "$status" -eq 1 ]
-  [ "$(jq -r '.pluginVersion // "absent"' "$TMP/.claude/conveyor.json")" = "absent" ]
+  v="$(jq -r .version "$BATS_TEST_DIRNAME/../plugin/.claude-plugin/plugin.json")"
+  [ "$(jq -r .pluginVersion "$TMP/.claude/conveyor.json")" = "$v" ]
+}
+
+@test "newer stamp than installed → never downgraded" {
+  use_cfg
+  jq '.pluginVersion = "999.0.0"' "$TMP/.claude/conveyor.json" > "$TMP/cfg.tmp" && mv "$TMP/cfg.tmp" "$TMP/.claude/conveyor.json"
+  run_doctor doctor-clean
+  [ "$status" -eq 0 ]
+  [ "$(jq -r .pluginVersion "$TMP/.claude/conveyor.json")" = "999.0.0" ]
+  [[ "$output" != *"stamped pluginVersion"* ]]
 }
 
 # ---- list truncation WARNs (issue #4) -------------------------------------
