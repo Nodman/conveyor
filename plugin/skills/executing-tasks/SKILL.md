@@ -32,15 +32,35 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
 
 ## Per plan task
 
-1. Spawn an implementer subagent, fresh context. Give it: the task text
-   verbatim (files, interfaces, steps), the repo's relevant project skills by
-   name, the TDD skill, and the report contract: condensed summary — what
-   changed, test evidence (command + counts), concerns. Include the
+1. Load `plugin/skills/routing/SKILL.md` first; pick the model per its
+   procedure; record the route (class, floor, model, reason) in the spawn
+   prompt. Then spawn an implementer subagent, fresh context. Give it: the
+   task text verbatim (files, interfaces, steps), the repo's relevant project
+   skills by name, the TDD skill, and the report contract: condensed summary —
+   what changed, test evidence (command + counts), concerns. Include the
    comment-prefix rule: every PR/issue comment starts with the author's name
-   — `**[<agent-name>]**` (e.g. `**[exec-12-1]** Fixed in abc123.`). Name
-   executors stably (`exec-<issue>-<n>`) so review findings can go back to the
-   author.
-   Executors run tests and commit; they never open PRs.
+   — `**[<agent-name>]**` (e.g. `**[claude-opus-4-8--12-1]** Fixed in
+   abc123.`). Name executors `<runner>-<model>--<issue>-<n>` (e.g.
+   `claude-opus-4-8--12-1`, `codex-gpt-5.6-sol--12-1`) so review findings can
+   go back to the author; claude Agent names never contain dots; ALWAYS set
+   `model:` explicitly. Claude executors run tests and commit; they never open
+   PRs.
+
+   Codex lane (route = codex): spawn via `${CLAUDE_PLUGIN_ROOT}/scripts/codex-exec.sh
+   run --sandbox workspace-write --workdir <issue worktree> --name
+   codex-<model>--<issue>-<n> --model <model> --out <report> --prompt-file
+   <f>`; the prompt file carries the task text verbatim, output bar, report
+   contract, comment-prefix rule, and style rule. Wait on the sentinel
+   (explicit timeout + poll). Codex edits files and runs LOCAL tests in the
+   worktree — it CANNOT commit, push, or reach the network (protected `.git`,
+   no DNS; docs/gotchas/codex.md workspace-write live results). After the
+   sentinel: the orchestrator judges the diff, reruns the tests when codex
+   couldn't, and commits under its own identity. Fix rounds resume by session
+   id (`codex-exec.sh session-id <log>`), one targeted repair max, then
+   escalate per routing. One write-mode codex per worktree at a time. Codex
+   missing/throttled → routing fallback (Opus) + ledger note. Tests needing
+   network can't run in the sandbox → the diff is unverified until the
+   orchestrator runs them.
 2. Judge the report. Ambiguous or load-bearing claims → spot-check yourself
    (run the tests, read the diff). Two failures on the same task → take it
    over inline.
@@ -52,8 +72,13 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    subsystem-tagged summary (first line a bold subsystem tag). The PR body
    becomes the squash commit — write it for the git log.
 2. `card.sh move <issue> agentReview`. Spawn **pr-reviewer** (never with a
-   cheaper model override). Round 1 = full charter; re-reviews = scoped to
-   the fixes + their comment threads (say so in the prompt).
+   cheaper model override). Routing may add an ADVISORY cross-family pass —
+   claude-authored code-heavy diff → codex read-only review
+   (`--sandbox read-only`) into a findings file; hand the file to pr-reviewer,
+   which verifies each finding and does all posting. Codex-authored PRs →
+   claude gate alone. Advisory findings never post directly. Round 1 = full
+   charter; re-reviews = scoped to the fixes + their comment threads (say so
+   in the prompt).
 3. Blocking findings: route each to the executor that wrote it (resume by
    name), with path:line + comment id. Executor fixes, pushes, replies in the
    finding's thread with the fix sha. Card back to agentReview; route the
