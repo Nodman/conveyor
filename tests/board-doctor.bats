@@ -201,8 +201,7 @@ setup_drift() { use_cfg; printf '<!-- conveyor:begin -->\n' > "$TMP/CLAUDE.md"; 
   use_cfg
   run_doctor doctor-clean
   [ "$status" -eq 0 ]
-  [[ "$output" == *"stamped pluginVersion"* ]]
-  [[ "$output" == *"commit .claude/conveyor.json"* ]]
+  [[ "$output" == *"stamped pluginVersion"* && "$output" == *"commit .claude/conveyor.json"* ]]
 }
 
 @test "drift run still stamps pluginVersion" {

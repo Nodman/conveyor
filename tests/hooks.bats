@@ -94,8 +94,6 @@ setup() {
   run bash -c "cd '$t' && printf '%s' '{\"source\":\"startup\"}' | '$HOOKS/session-start.sh'"
   [ "$status" -eq 0 ]
   ctx="$(echo "$output" | jq -r '.hookSpecificOutput.additionalContext')"
-  [[ "$ctx" == *"this repo expects conveyor 999.0.0"* ]]
-  [[ "$ctx" == *"claude plugin update conveyor"* ]]
-  [[ "$ctx" != *"run /conveyor:doctor to reconcile"* ]]
   rm -rf "$t"
+  [[ "$ctx" == *"this repo expects conveyor 999.0.0"* && "$ctx" == *"claude plugin update conveyor"* && "$ctx" != *"run /conveyor:doctor to reconcile"* ]]
 }
