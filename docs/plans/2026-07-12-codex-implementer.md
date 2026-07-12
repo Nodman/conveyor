@@ -183,14 +183,17 @@ verification = section checklist below. Surgical edits only.
     codex-<model>--<issue>-<n> --model <model> --out <report> --prompt-file
     <f>`; prompt file carries the task text verbatim, output bar, report
     contract, comment-prefix rule, style rule. Wait on the sentinel
-    (explicit timeout + poll). Codex runs tests and commits in the worktree;
-    it never pushes or opens PRs.
+    (explicit timeout + poll). Codex edits files and runs LOCAL tests in the
+    worktree — it CANNOT commit, push, or reach the network (protected
+    `.git`, no DNS; docs/gotchas/codex.md workspace-write live results).
+    After the sentinel: the orchestrator judges the diff, reruns the tests
+    when codex couldn't, and commits under its own identity.
   - Fix rounds resume by session id (`codex-exec.sh session-id <log>`), one
     targeted repair max, then escalate per routing.
   - One write-mode codex per worktree at a time.
-  - Codex missing/throttled → routing fallback (Opus) + ledger note. If the
-    sandbox blocked test runs (gotchas codex.md live results), treat the
-    diff as unverified: run the tests yourself before Ship.
+  - Codex missing/throttled → routing fallback (Opus) + ledger note. Tests
+    needing network can't run in the sandbox → the diff is unverified until
+    the orchestrator runs them.
 - [ ] Ship step 2, after the pr-reviewer spawn sentence, add: routing may
   add an ADVISORY cross-family pass — claude-authored code-heavy diff →
   codex read-only review (`--sandbox read-only`) into a findings file; hand

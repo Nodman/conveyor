@@ -26,8 +26,11 @@ flag. Executor naming switches to the routing scheme.
   `codex-exec.sh run` (default read-only). Resume passes
   `-c 'sandbox_mode="workspace-write"'` — `resume` rejects `-s`
   (docs/gotchas/codex.md).
-- **Codex implementers work only in the issue worktree**, run tests, commit.
-  Orchestrator keeps push, PR, labels, board — unchanged gates.
+- **Codex implementers work only in the issue worktree**: edit files + run
+  LOCAL tests. AMENDED 2026-07-12 after live verification (docs/gotchas/
+  codex.md): the sandbox protects `.git` and blocks network — codex CANNOT
+  commit or push. The orchestrator reviews the diff, commits under its own
+  identity, and keeps push, PR, labels, board — unchanged gates.
 - **Codex reviews are ADVISORY in v1**: read-only, findings to a file; the
   claude pr-reviewer gate verifies findings and does ALL posting (labels,
   comments, board). Codex becomes a gate only after benchmarked
@@ -60,8 +63,10 @@ flag. Executor naming switches to the routing scheme.
   - Route = codex → `codex-exec.sh run --sandbox workspace-write` with
     workdir = issue worktree; prompt file carries the task text verbatim,
     output bar, report contract, comment-prefix rule, style rule.
-    Wait on sentinel (timeout + background poll). Codex runs tests and
-    commits in the worktree; it never pushes or opens PRs.
+    Wait on sentinel (timeout + background poll). Codex edits files and runs
+    local tests in the worktree; it cannot commit, push, or open PRs
+    (sandbox, see gotcha). The orchestrator judges the diff, reruns tests
+    when needed, and commits under its own identity.
 - Report judging, ledger, two-failures-take-over: unchanged. For codex the
   "resume by name" fix loop becomes resume by session id (from the run log).
 - Parallel codex writers: only one write-mode codex per worktree at a time.
@@ -86,9 +91,8 @@ flag. Executor naming switches to the routing scheme.
 ### Error handling
 
 - Sentinel timeout → retry/resume once (routing ladder), then Opus fallback.
-- Codex commit surprises (wrong author, unsigned) → live-verify commit shape
-  in the first QA run; orchestrator amends metadata if needed and records a
-  gotcha.
+- Codex cannot commit (verified — protected `.git`): the orchestrator
+  commits the diff; commits carry the orchestrator's git identity.
 - Worktree conflict (codex writing where a claude executor works) → routing
   rule: one implementer per worktree, sequential.
 
