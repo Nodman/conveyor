@@ -147,7 +147,7 @@ echo "=== $name ==="
 $cd_line
 printf '\e[2m--- prompt ---\n'
 cat $prompt_file
-printf '--------------\e[0m\n'
+printf -- '--------------\e[0m\n'
 $codex_cmd $sandbox --json -o $out - < $prompt_file 2>&1 | $SCRIPT_DIR/codex-exec.sh render $log $out
 echo "\${PIPESTATUS[0]}" > $sentinel
 EOF

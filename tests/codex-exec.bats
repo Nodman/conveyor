@@ -107,12 +107,12 @@ wait_sentinel() { # $1=path — poll up to ~5s
   grep -qF "$TMP/r1.run.sh" <<<"$output"
   run grep -F 'tmux select-pane' "$RUN_LOG"
   [ "$status" -eq 0 ]
-  [[ "$output" == *'-T codex-gpt-5.6-sol'* ]]
+  grep -qF -- '-T codex-gpt-5.6-sol' <<<"$output"
   # pane never ran (tmux is mocked) — assert the runner's contract instead;
   # don't execute it: the appended 'sleep 10' linger would stall the suite
   run cat "$TMP/r1.run.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"codex exec"* && "$output" == *"> $TMP/r1.md.done"* && "$output" == *"sleep 10"* && "$output" == *"--json"* && "$output" == *"codex-exec.sh render $TMP/r1.log"* ]]
+  [[ "$output" == *"codex exec"* && "$output" == *"> $TMP/r1.md.done"* && "$output" == *"sleep 10"* && "$output" == *"--json"* && "$output" == *"codex-exec.sh render $TMP/r1.log"* && "$output" == *"printf -- '--------------"* ]]
 }
 
 @test "run iterm mode: split vertically, session named after agent" {
