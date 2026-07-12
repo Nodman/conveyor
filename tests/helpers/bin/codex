@@ -2,13 +2,19 @@
 set -euo pipefail
 echo "codex $*" >> "${RUN_LOG:?}"
 if [[ "${1:-}" == "login" ]]; then echo "Logged in (mock)"; exit 0; fi
-has_resume="" has_s=""
+has_resume="" has_s="" has_json="" has_color=""
 for a in "$@"; do
   [[ "$a" == "resume" ]] && has_resume=1
   [[ "$a" == "-s" ]] && has_s=1
+  [[ "$a" == "--json" ]] && has_json=1
+  [[ "$a" == "--color" ]] && has_color=1
 done
 if [[ -n "$has_resume" && -n "$has_s" ]]; then
   echo "error: unexpected argument '-s' found" >&2
+  exit 2
+fi
+if [[ -n "$has_resume" && -n "$has_color" ]]; then
+  echo "error: unexpected argument '--color' found" >&2
   exit 2
 fi
 out="" prev=""
@@ -17,6 +23,19 @@ for a in "$@"; do
   prev="$a"
 done
 if [[ ! -t 0 ]]; then cat >/dev/null; fi
-echo "session id: 0000-mock-session"
-echo "codex mock ran"
+if [[ -n "${MOCK_CODEX_FAIL:-}" ]]; then
+  echo "Not inside a trusted directory and --skip-git-repo-check was not specified."
+  exit "$MOCK_CODEX_FAIL"
+fi
+if [[ -n "$has_json" ]]; then
+  echo '{"type":"thread.started","thread_id":"0000-mock-session"}'
+  echo '{"type":"item.started","item":{"id":"i0","type":"command_execution","command":"echo hi","status":"in_progress"}}'
+  echo '{"type":"item.completed","item":{"id":"i0","type":"command_execution","command":"echo hi","aggregated_output":"hi","exit_code":0,"status":"completed"}}'
+  echo "{\"type\":\"item.completed\",\"item\":{\"id\":\"i1\",\"type\":\"file_change\",\"changes\":[{\"path\":\"$PWD/mock.txt\",\"kind\":\"add\"}],\"status\":\"completed\"}}"
+  echo '{"type":"item.completed","item":{"id":"i2","type":"agent_message","text":"mock final message"}}'
+  echo '{"type":"turn.completed","usage":{"input_tokens":100,"output_tokens":10}}'
+else
+  echo "session id: 0000-mock-session"
+  echo "codex mock ran"
+fi
 if [[ -n "$out" ]]; then printf 'mock final message\n' > "$out"; fi

@@ -78,6 +78,9 @@ wait_sentinel() { # $1=path — poll up to ~5s
   wait_sentinel "$TMP/r1.md.done"
   [ -f "$TMP/r1.md" ]
   [ "$(cat "$TMP/r1.md.done")" = "0" ]
+  [ "$(grep -c '^session id: ' "$TMP/r1.log")" = "1" ]
+  run bash -c "LC_ALL=C grep -q \$'\x1b' '$TMP/r1.log'"
+  [ "$status" -ne 0 ]
   run bash -c "'$SCRIPTS/codex-exec.sh' session-id '$TMP/r1.log'"
   [ "$output" = "0000-mock-session" ]
 }
@@ -89,7 +92,7 @@ wait_sentinel() { # $1=path — poll up to ~5s
   wait_sentinel "$TMP/r1.md.done"
   run grep -F 'codex exec' "$RUN_LOG"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"-s read-only"* && "$output" == *"-m gpt-5.6-sol"* && "$output" == *"-o $TMP/r1.md"* ]]
+  [[ "$output" == *"-s read-only"* && "$output" == *"-m gpt-5.6-sol"* && "$output" == *"-o $TMP/r1.md"* && "$output" == *"--json"* ]]
 }
 
 @test "run tmux mode: pane spawned with runner script" {
@@ -100,12 +103,26 @@ wait_sentinel() { # $1=path — poll up to ~5s
   grep -qF 'mode=tmux' <<<"$output"
   run grep -F 'tmux split-window' "$RUN_LOG"
   [ "$status" -eq 0 ]
+  grep -qF -- '-d -h -l 40%' <<<"$output"
   grep -qF "$TMP/r1.run.sh" <<<"$output"
+  run grep -F 'tmux select-pane' "$RUN_LOG"
+  [ "$status" -eq 0 ]
+  grep -qF -- '-T codex-gpt-5.6-sol' <<<"$output"
   # pane never ran (tmux is mocked) — assert the runner's contract instead;
   # don't execute it: the appended 'sleep 10' linger would stall the suite
   run cat "$TMP/r1.run.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"codex exec"* && "$output" == *"> $TMP/r1.md.done"* && "$output" == *"sleep 10"* ]]
+  [[ "$output" == *"codex exec"* && "$output" == *"> $TMP/r1.md.done"* && "$output" == *"sleep 10"* && "$output" == *"--json"* && "$output" == *"codex-exec.sh render $TMP/r1.log"* && "$output" == *"printf -- '--------------"* ]]
+}
+
+@test "run iterm mode: split vertically, session named after agent" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r1.md' --prompt-file '$TMP/p.txt' --visibility iterm"
+  [ "$status" -eq 0 ]
+  run grep -F 'osascript' "$RUN_LOG"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'iTerm2'* && "$output" == *'split vertically'* && "$output" == *'set name of newSession to "codex-gpt-5.6-sol"'* ]]
 }
 
 @test "run window mode: osascript Terminal spawn" {
@@ -128,7 +145,7 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [ "$(cat "$TMP/r2.md.done")" = "0" ]
   run cat "$TMP/r2.run.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *'codex exec resume 0000-mock-session'* && "$output" == *'sandbox_mode="read-only"'* && "$output" != *'-s read-only'* && "$output" != *'--last'* ]]
+  [[ "$output" == *'codex exec resume 0000-mock-session'* && "$output" == *'sandbox_mode="read-only"'* && "$output" != *'-s read-only'* && "$output" != *'--last'* && "$output" == *"--json"* ]]
 }
 
 @test "run without required args → usage" {
@@ -210,4 +227,62 @@ wait_sentinel() { # $1=path — poll up to ~5s
   run grep -F 'codex exec' "$RUN_LOG"
   [ "$status" -eq 0 ]
   [[ "$output" == *"-s read-only"* ]]
+}
+
+@test "render: raw JSONL kept, one synthetic session line, no ESC, survives garbage" {
+  printf '%s\n' \
+    '{"type":"thread.started","thread_id":"0000-mock-session"}' \
+    'garbage not json' \
+    '{"type":"unknown.event","x":1}' \
+    '{"type":"turn.completed","usage":{"input_tokens":5,"output_tokens":2}}' \
+    > "$TMP/ev.jsonl"
+  run bash -c "'$SCRIPTS/codex-exec.sh' render '$TMP/o.log' '$TMP/o.md' < '$TMP/ev.jsonl'"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '^session id: ' "$TMP/o.log")" = "1" ]
+  [ "$(grep -cF 'garbage not json' "$TMP/o.log")" = "1" ]
+  run bash -c "LC_ALL=C grep -q \$'\x1b' '$TMP/o.log'"
+  [ "$status" -ne 0 ]
+}
+
+@test "render: command shown once, output hidden, failure marked red-path" {
+  printf '%s\n' \
+    '{"type":"item.started","item":{"id":"i0","type":"command_execution","command":"echo hi","status":"in_progress"}}' \
+    '{"type":"item.completed","item":{"id":"i0","type":"command_execution","command":"echo hi","aggregated_output":"SECRET_OUTPUT","exit_code":0,"status":"completed"}}' \
+    '{"type":"item.started","item":{"id":"i1","type":"command_execution","command":"false","status":"in_progress"}}' \
+    '{"type":"item.completed","item":{"id":"i1","type":"command_execution","command":"false","aggregated_output":"","exit_code":1,"status":"completed"}}' \
+    > "$TMP/ev.jsonl"
+  run bash -c "'$SCRIPTS/codex-exec.sh' render '$TMP/o.log' '$TMP/o.md' < '$TMP/ev.jsonl'"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'$ echo hi'* && "$output" != *SECRET_OUTPUT* && "$output" == *'exit 1: false'* ]]
+}
+
+@test "render: file change as kind + cwd-relative path" {
+  printf '%s\n' \
+    "{\"type\":\"item.completed\",\"item\":{\"id\":\"i2\",\"type\":\"file_change\",\"changes\":[{\"path\":\"$TMP/CHANGES.md\",\"kind\":\"add\"}],\"status\":\"completed\"}}" \
+    > "$TMP/ev.jsonl"
+  run bash -c "cd '$TMP' && '$SCRIPTS/codex-exec.sh' render '$TMP/o.log' '$TMP/o.md' < '$TMP/ev.jsonl'"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'add CHANGES.md'* && "$output" != *"add $TMP/CHANGES.md"* ]]
+}
+
+@test "render: full agent message, report path once at end" {
+  printf '%s\n' \
+    '{"type":"item.completed","item":{"id":"i3","type":"agent_message","text":"first msg"}}' \
+    '{"type":"item.completed","item":{"id":"i4","type":"agent_message","text":"final msg with a very long body that must not be truncated"}}' \
+    > "$TMP/ev.jsonl"
+  run bash -c "'$SCRIPTS/codex-exec.sh' render '$TMP/o.log' '$TMP/o.md' < '$TMP/ev.jsonl'"
+  [ "$status" -eq 0 ]
+  [ "$(grep -cF "report: $TMP/o.md" <<<"$output")" = "1" ]
+  [[ "$output" == *'first msg'* && "$output" == *'must not be truncated'* ]]
+}
+
+@test "run: failing codex → sentinel nonzero, garbage logged, renderer survives" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX MOCK_CODEX_FAIL=3 '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/f1.md' --prompt-file '$TMP/p.txt'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/f1.md.done"
+  [ "$(cat "$TMP/f1.md.done")" = "3" ]
+  run grep -cF 'Not inside a trusted directory' "$TMP/f1.log"
+  [[ "$output" == "1" ]]
 }
