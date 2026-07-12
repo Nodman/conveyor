@@ -37,7 +37,9 @@ step on a repo that already has related state.
    Also settle external-agent visibility: `codex-exec.sh detect` prints
    `unset` → AskUserQuestion (spawn external agents like codex in a separate
    window / keep in background) → `codex-exec.sh set-visibility
-   <window|background>`. Prints a terminal mode → skip, nothing to ask.
+   <window|background>`. Prints a terminal mode → skip, nothing to ask. codex
+   CLI absent → say once that routing's codex lanes stay dormant until it is
+   installed (no question).
 5. **Scaffold.** `scaffold.sh` (docs dirs, issue template, labels, CLAUDE.md
    block). Show the diff to the user.
 6. **Label permissions (consent gate).** Conveyor agents apply lifecycle

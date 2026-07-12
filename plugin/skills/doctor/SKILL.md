@@ -24,6 +24,10 @@ description: Use at task pickup, when a board card looks wrong, or after config/
    - `codex-exec.sh detect` prints `unset` → flag: council/external agents
      will interrupt to ask on first use. Fix: `codex-exec.sh set-visibility
      <window|background>` — ask the user which, never write config silently.
+   - `codex-exec.sh preflight` fails while `plugin/skills/routing/` ships codex
+     pool rows → note codex lanes dormant (install + auth codex to enable);
+     preflight passes but an earlier doctor run flagged dormancy → note codex
+     lanes now active.
 3. Report findings as bullets with the concrete fix for each (the exact
    `card.sh move`, label, or comment command). Ask before fixing anything
    that changes board state; never move a card to Done (automation only).
