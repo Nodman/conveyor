@@ -143,3 +143,71 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [ "$status" -ne 0 ]
   [[ "$output" == *"no session id"* ]]
 }
+
+@test "run --sandbox workspace-write: fresh uses -s workspace-write" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol--55-1 --model gpt-5.6-sol --out '$TMP/w1.md' --prompt-file '$TMP/p.txt' --sandbox workspace-write"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/w1.md.done"
+  run grep -F 'codex exec' "$RUN_LOG"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"-s workspace-write"* ]]
+}
+
+@test "run --sandbox workspace-write resume: -c sandbox_mode, never -s" {
+  use_cfg
+  printf 'fix\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol--55-1 --model gpt-5.6-sol --out '$TMP/w2.md' --prompt-file '$TMP/p.txt' --resume 0000-mock-session --sandbox workspace-write"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/w2.md.done"
+  run cat "$TMP/w2.run.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'sandbox_mode="workspace-write"'* && "$output" != *'-s workspace-write'* ]]
+}
+
+@test "run --sandbox bogus value → usage" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/x.md' --prompt-file '$TMP/p.txt' --sandbox sometimes"
+  [ "$status" -eq 2 ]
+}
+
+@test "run --workdir: runner cds there before codex" {
+  use_cfg
+  mkdir "$TMP/wt"
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/w3.md' --prompt-file '$TMP/p.txt' --workdir '$TMP/wt'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/w3.md.done"
+  run cat "$TMP/w3.run.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"cd $TMP/wt"* ]]
+}
+
+@test "run --workdir missing dir → dies at spawn" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/w4.md' --prompt-file '$TMP/p.txt' --workdir '$TMP/nope'"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"no workdir"* ]]
+}
+
+@test "run --workdir with relative --out → dies" {
+  use_cfg
+  mkdir "$TMP/wt"
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out rel.md --prompt-file '$TMP/p.txt' --workdir '$TMP/wt'"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"absolute --out/--prompt-file required with --workdir"* ]]
+}
+
+@test "run default sandbox unchanged: read-only" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/w5.md' --prompt-file '$TMP/p.txt'"
+  wait_sentinel "$TMP/w5.md.done"
+  run grep -F 'codex exec' "$RUN_LOG"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"-s read-only"* ]]
+}

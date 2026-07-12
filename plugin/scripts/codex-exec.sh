@@ -10,7 +10,7 @@ usage() {
     echo "       codex-exec.sh detect"
     echo "       codex-exec.sh set-visibility <window|background>"
     echo "       codex-exec.sh session-id <log>"
-    echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--visibility <mode>]"
+    echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--visibility <mode>] [--sandbox read-only|workspace-write] [--workdir <dir>]"
   } >&2
   exit 2
 }
@@ -43,7 +43,7 @@ session_id() {
 }
 
 run_codex() {
-  local name="" model="" out="" resume="" prompt_file="" vis=""
+  local name="" model="" out="" resume="" prompt_file="" vis="" sandbox_mode="read-only" workdir=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --name) name="$2"; shift 2 ;;
@@ -52,23 +52,32 @@ run_codex() {
       --resume) resume="$2"; shift 2 ;;
       --prompt-file) prompt_file="$2"; shift 2 ;;
       --visibility) vis="$2"; shift 2 ;;
+      --sandbox) sandbox_mode="$2"; shift 2 ;;
+      --workdir) workdir="$2"; shift 2 ;;
       *) usage ;;
     esac
   done
   [[ -n "$name" && -n "$model" && -n "$out" && -n "$prompt_file" ]] || usage
+  case "$sandbox_mode" in read-only|workspace-write) ;; *) usage ;; esac
   [[ -f "$prompt_file" ]] || die "no prompt file: $prompt_file"
-  case "$out$prompt_file" in *" "*) die "paths must not contain spaces" ;; esac
+  [[ -z "$workdir" || -d "$workdir" ]] || die "no workdir: $workdir"
+  # runner cd's to workdir, so relative --out/--prompt-file would resolve there
+  [[ -z "$workdir" || ( "$out" == /* && "$prompt_file" == /* ) ]] || die "absolute --out/--prompt-file required with --workdir"
+  case "$out$prompt_file$workdir" in *" "*) die "paths must not contain spaces" ;; esac
   if [[ -z "$vis" ]]; then vis="$(detect)"; fi
   if [[ "$vis" == "unset" ]]; then vis=background; fi
 
   local log="${out%.md}.log" sentinel="$out.done" runner="${out%.md}.run.sh"
   rm -f "$out" "$sentinel"
-  local codex_cmd="codex exec -m $model" sandbox="-s read-only"
+  local codex_cmd="codex exec -m $model" sandbox="-s $sandbox_mode"
   # resume subcommand rejects -s; set the sandbox via config instead
-  if [[ -n "$resume" ]]; then codex_cmd="codex exec resume $resume"; sandbox="-c 'sandbox_mode=\"read-only\"'"; fi
+  if [[ -n "$resume" ]]; then codex_cmd="codex exec resume $resume"; sandbox="-c 'sandbox_mode=\"$sandbox_mode\"'"; fi
+  local cd_line=""
+  [[ -n "$workdir" ]] && cd_line="cd $workdir || { echo 1 > $sentinel; exit 1; }"
   cat > "$runner" <<EOF
 #!/usr/bin/env bash
 echo "=== $name ==="
+$cd_line
 $codex_cmd $sandbox -o $out - < $prompt_file 2>&1 | tee $log
 echo "\${PIPESTATUS[0]}" > $sentinel
 EOF
