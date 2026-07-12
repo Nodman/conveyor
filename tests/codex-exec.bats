@@ -103,12 +103,26 @@ wait_sentinel() { # $1=path — poll up to ~5s
   grep -qF 'mode=tmux' <<<"$output"
   run grep -F 'tmux split-window' "$RUN_LOG"
   [ "$status" -eq 0 ]
+  grep -qF -- '-d -h -l 40%' <<<"$output"
   grep -qF "$TMP/r1.run.sh" <<<"$output"
+  run grep -F 'tmux select-pane' "$RUN_LOG"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'-T codex-gpt-5.6-sol'* ]]
   # pane never ran (tmux is mocked) — assert the runner's contract instead;
   # don't execute it: the appended 'sleep 10' linger would stall the suite
   run cat "$TMP/r1.run.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"codex exec"* && "$output" == *"> $TMP/r1.md.done"* && "$output" == *"sleep 10"* && "$output" == *"--json"* && "$output" == *"codex-exec.sh render $TMP/r1.log"* ]]
+}
+
+@test "run iterm mode: split vertically, session named after agent" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r1.md' --prompt-file '$TMP/p.txt' --visibility iterm"
+  [ "$status" -eq 0 ]
+  run grep -F 'osascript' "$RUN_LOG"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'iTerm2'* && "$output" == *'split vertically'* && "$output" == *'set name of newSession to "codex-gpt-5.6-sol"'* ]]
 }
 
 @test "run window mode: osascript Terminal spawn" {

@@ -110,7 +110,7 @@ render_stream() {
 }
 
 run_codex() {
-  local name="" model="" out="" resume="" prompt_file="" vis="" sandbox_mode="read-only" workdir=""
+  local name="" model="" out="" resume="" prompt_file="" vis="" sandbox_mode="read-only" workdir="" pane=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --name) name="$2"; shift 2 ;;
@@ -156,9 +156,16 @@ EOF
   case "$vis" in
     tmux)
       echo 'sleep 10' >> "$runner"   # pane lingers so the human can read the tail
-      tmux split-window -d -v -l 15 "$runner" ;;
+      pane="$(tmux split-window -d -h -l 40% -P -F '#{pane_id}' "$runner")"
+      tmux select-pane -t "$pane" -T "$name" || true ;;
     iterm)
-      osascript -e "tell application \"iTerm2\" to tell current session of current window to split horizontally with default profile command \"$runner\"" >/dev/null ;;
+      osascript \
+        -e 'tell application "iTerm2"' \
+        -e 'tell current session of current window' \
+        -e "set newSession to split vertically with default profile command \"$runner\"" \
+        -e 'end tell' \
+        -e "set name of newSession to \"$name\"" \
+        -e 'end tell' >/dev/null ;;
     window)
       osascript -e "tell application \"Terminal\" to do script \"$runner\"" >/dev/null ;;
     background)
