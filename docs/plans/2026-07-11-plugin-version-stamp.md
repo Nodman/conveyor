@@ -11,6 +11,7 @@ Spec: docs/specs/2026-07-11-plugin-version-stamp.md
 - Silent when: no `.claude/conveyor.json`; stamp matches; version unresolvable (fail-safe, exit 0).
 - Subagent guard unchanged (`agent_type` → `{}`).
 - Doctor stamps ONLY on the clean path (findings == 0), preserving every other config key.
+  (AMENDED 2026-07-12, #51 — superseded; see amendment below.)
 - plugin.json 0.1.1 → 0.1.2.
 
 ## File map
@@ -153,3 +154,83 @@ TDD n/a (prose + version constant); verification instead.
 ## Board mapping
 
 Single PR → issue #22, conveyor:executing-tasks. QA runtime surface: session-start.sh + board-doctor.sh (both drivable live); init prose is structure-checked only.
+
+## Amendment 2026-07-12 — #51: direction-aware nudge, always-stamp, commit step
+
+Spec amendment: same-name spec, AMENDED bullets. Two bugs in the shipped design:
+- stamp only wrote on findings==0 → any drift kept the nudge forever;
+- stamp landed uncommitted and nothing said to commit it → never propagated to other clones,
+  and a dev with an OLDER plugin than the committed stamp got a nonsense nudge
+  ("updated 2.0 → 1.5") and doctor would downgrade the stamp (ping-pong).
+
+### Task A1 — direction-aware session-start nudge
+
+Files: `plugin/hooks/session-start.sh`, `tests/hooks.bats`.
+
+- [ ] Failing tests — append to `tests/hooks.bats`:
+
+```bash
+@test "session-start: stamp newer than installed → plugin-update nudge, not doctor" {
+  t="$(mktemp -d)"; mkdir -p "$t/.claude"
+  printf '{"pluginVersion":"999.0.0"}' > "$t/.claude/conveyor.json"
+  run bash -c "cd '$t' && printf '%s' '{\"source\":\"startup\"}' | '$HOOKS/session-start.sh'"
+  [ "$status" -eq 0 ]
+  ctx="$(echo "$output" | jq -r '.hookSpecificOutput.additionalContext')"
+  [[ "$ctx" == *"this repo expects conveyor 999.0.0"* ]]
+  [[ "$ctx" == *"claude plugin update conveyor"* ]]
+  [[ "$ctx" != *"run /conveyor:doctor to reconcile"* ]]
+  rm -rf "$t"
+}
+```
+
+- [ ] Implement — replace the `!=` branch in `session-start.sh`:
+
+```bash
+if [[ -n "$installed" && "$stamped" != "$installed" ]]; then
+  if [[ -n "$stamped" && "$(printf '%s\n%s\n' "$installed" "$stamped" | sort -V | tail -n1)" == "$stamped" ]]; then
+    text+=$'\n\n'"this repo expects conveyor $stamped, you have $installed — run \`claude plugin update conveyor\`."
+  else
+    text+=$'\n\n'"conveyor plugin updated ${stamped:-unstamped} → $installed since this repo was configured — run /conveyor:doctor to reconcile."
+  fi
+fi
+```
+
+- [ ] `bats tests/hooks.bats` green (existing stale/missing-stamp tests unchanged); shellcheck clean.
+
+### Task A2 — doctor stamps on every run, upward only, with commit reminder
+
+Files: `plugin/scripts/board-doctor.sh`, `tests/board-doctor.bats`.
+
+- [ ] Tests — in `tests/board-doctor.bats`: INVERT "drift run leaves pluginVersion untouched"
+      (drift run now stamps, exit still 1); add: clean run prints the commit reminder; stamp
+      newer than installed (`"pluginVersion":"999.0.0"` in fixture cfg) → untouched, no reminder.
+- [ ] Implement — delete the stamp block from the `findings -eq 0` branch; before the final
+      findings check insert:
+
+```bash
+installed="$(jq -r '.version // empty' "$HERE/../.claude-plugin/plugin.json" 2>/dev/null || true)"
+stamped="$(jq -r '.pluginVersion // empty' "$CONVEYOR_CONFIG" 2>/dev/null || true)"
+if [[ -n "$installed" && "$stamped" != "$installed" && \
+      "$(printf '%s\n%s\n' "$installed" "${stamped:-0}" | sort -V | tail -n1)" == "$installed" ]]; then
+  tmp=$(mktemp)
+  jq --arg v "$installed" '.pluginVersion = $v' "$CONVEYOR_CONFIG" > "$tmp" && mv "$tmp" "$CONVEYOR_CONFIG"
+  echo "board-doctor: stamped pluginVersion ${stamped:-unstamped} → $installed — commit .claude/conveyor.json"
+fi
+```
+
+- [ ] `bats tests/board-doctor.bats` green; full `bats tests` green; shellcheck clean.
+
+### Task A3 — doctor skill commits the stamp; version bump
+
+Files: `plugin/skills/doctor/SKILL.md`, `plugin/.claude-plugin/plugin.json`. TDD n/a (prose + constant).
+
+- [ ] doctor SKILL.md step 3: when the script printed
+      `stamped pluginVersion … — commit .claude/conveyor.json`, commit that one file:
+      `git commit -m "chore: doctor — stamp pluginVersion <new>" .claude/conveyor.json`
+      (no ask — it records the already-installed version; precedent 1055c1e).
+- [ ] plugin.json 0.1.18 → 0.1.19.
+- [ ] Verify: `bats tests` green; shellcheck clean.
+
+### Board mapping (amendment)
+
+Single PR → issue #51, conveyor:executing-tasks. QA surface: session-start.sh + board-doctor.sh, live-drivable.
