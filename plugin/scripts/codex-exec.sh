@@ -61,6 +61,8 @@ run_codex() {
   case "$sandbox_mode" in read-only|workspace-write) ;; *) usage ;; esac
   [[ -f "$prompt_file" ]] || die "no prompt file: $prompt_file"
   [[ -z "$workdir" || -d "$workdir" ]] || die "no workdir: $workdir"
+  # runner cd's to workdir, so relative --out/--prompt-file would resolve there
+  [[ -z "$workdir" || ( "$out" == /* && "$prompt_file" == /* ) ]] || die "absolute --out/--prompt-file required with --workdir"
   case "$out$prompt_file$workdir" in *" "*) die "paths must not contain spaces" ;; esac
   if [[ -z "$vis" ]]; then vis="$(detect)"; fi
   if [[ "$vis" == "unset" ]]; then vis=background; fi

@@ -193,6 +193,15 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [[ "$output" == *"no workdir"* ]]
 }
 
+@test "run --workdir with relative --out → dies" {
+  use_cfg
+  mkdir "$TMP/wt"
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out rel.md --prompt-file '$TMP/p.txt' --workdir '$TMP/wt'"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"absolute --out/--prompt-file required with --workdir"* ]]
+}
+
 @test "run default sandbox unchanged: read-only" {
   use_cfg
   printf 'q\n' > "$TMP/p.txt"
