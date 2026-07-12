@@ -11,6 +11,7 @@ usage() {
     echo "       codex-exec.sh set-visibility <window|background>"
     echo "       codex-exec.sh session-id <log>"
     echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--visibility <mode>] [--sandbox read-only|workspace-write] [--workdir <dir>]"
+    echo "       codex-exec.sh render <log> <report> (internal: codex --json stream on stdin)"
   } >&2
   exit 2
 }
@@ -40,6 +41,72 @@ set_visibility() {
 session_id() {
   [[ -f "${1:-}" ]] || die "no log file: ${1:-}"
   grep -m1 '^session id: ' "$1" | awk '{print $3}' | grep . || die "no session id in $1"
+}
+
+render_stream() {
+  set +e   # a display bug must never SIGPIPE-kill the codex run
+  local log="${1:?}" report="${2:-}"
+  local B="" R="" G="" C="" D="" N=""
+  if [[ -t 1 ]]; then
+    B=$'\e[1m'; R=$'\e[31m'; G=$'\e[32m'; C=$'\e[36m'; D=$'\e[2m'; N=$'\e[0m'
+  fi
+  : > "$log"
+  local line type itype txt cmd rc
+  while IFS= read -r line; do
+    printf '%s\n' "$line" >> "$log"
+    if ! jq -e . >/dev/null 2>&1 <<<"$line"; then
+      printf '%s! %s%s\n\n' "$D" "$line" "$N"
+      continue
+    fi
+    type=$(jq -r '.type // empty' <<<"$line" 2>/dev/null)
+    case "$type" in
+      thread.started)
+        txt=$(jq -r '.thread_id // empty' <<<"$line" 2>/dev/null)
+        if [[ -n "$txt" ]]; then
+          printf 'session id: %s\n' "$txt" >> "$log"
+          printf '%ssession %s%s\n\n' "$B" "$txt" "$N"
+        fi ;;
+      item.started|item.completed)
+        itype=$(jq -r '.item.item_type // .item.type // empty' <<<"$line" 2>/dev/null)
+        case "$itype" in
+          command_execution)
+            cmd=$(jq -r '.item.command // empty' <<<"$line" 2>/dev/null | tr '\n' ' ' | cut -c1-120)
+            if [[ "$type" == item.started && -n "$cmd" ]]; then
+              printf '%s$ %s%s\n\n' "$C" "$cmd" "$N"
+            elif [[ "$type" == item.completed ]]; then
+              rc=$(jq -r '.item.exit_code // 0' <<<"$line" 2>/dev/null)
+              if [[ "$rc" != 0 ]]; then printf '%s! exit %s: %s%s\n\n' "$R" "$rc" "$cmd" "$N"; fi
+            fi ;;
+          file_change)
+            if [[ "$type" == item.completed ]]; then
+              jq -r --arg pwd "$PWD/" '.item.changes[]? | "\(.kind) \(.path | ltrimstr($pwd))"' <<<"$line" 2>/dev/null |
+                while IFS= read -r txt; do printf '%s+ %s%s\n' "$G" "$txt" "$N"; done
+              printf '\n'
+            fi ;;
+          agent_message)
+            if [[ "$type" == item.completed ]]; then
+              txt=$(jq -r '.item.text // empty' <<<"$line" 2>/dev/null)
+              if [[ -n "$txt" ]]; then printf '%s%s%s\n\n' "$C" "$txt" "$N"; fi
+            fi ;;
+          reasoning)
+            if [[ "$type" == item.completed ]]; then
+              txt=$(jq -r '.item.text // empty' <<<"$line" 2>/dev/null | tr '\n' ' ' | cut -c1-160)
+              if [[ -n "$txt" ]]; then printf '%s* %s%s\n\n' "$D" "$txt" "$N"; fi
+            fi ;;
+          todo_list)
+            txt=$(jq -r '[.item.items[]? | select(.completed == false)][0].text // empty' <<<"$line" 2>/dev/null)
+            if [[ -n "$txt" ]]; then printf '%s> %s%s\n\n' "$D" "$txt" "$N"; fi ;;
+        esac ;;
+      turn.completed)
+        txt=$(jq -r '"\(.usage.input_tokens // 0) in / \(.usage.output_tokens // 0) out"' <<<"$line" 2>/dev/null)
+        printf '%sdone: %s%s\n\n' "$G" "$txt" "$N" ;;
+      error)
+        txt=$(jq -r '.message // "unknown error"' <<<"$line" 2>/dev/null)
+        printf '%sERROR %s%s\n\n' "$R" "$txt" "$N" ;;
+    esac
+  done
+  if [[ -n "$report" ]]; then printf '%sreport: %s%s\n' "$D" "$report" "$N"; fi
+  return 0
 }
 
 run_codex() {
@@ -104,5 +171,6 @@ case "${1:-}" in
   set-visibility) shift; set_visibility "$@" ;;
   session-id) shift; session_id "$@" ;;
   run) shift; run_codex "$@" ;;
+  render) shift; render_stream "$@" ;;
   *) usage ;;
 esac

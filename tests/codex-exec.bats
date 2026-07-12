@@ -211,3 +211,50 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [ "$status" -eq 0 ]
   [[ "$output" == *"-s read-only"* ]]
 }
+
+@test "render: raw JSONL kept, one synthetic session line, no ESC, survives garbage" {
+  printf '%s\n' \
+    '{"type":"thread.started","thread_id":"0000-mock-session"}' \
+    'garbage not json' \
+    '{"type":"unknown.event","x":1}' \
+    '{"type":"turn.completed","usage":{"input_tokens":5,"output_tokens":2}}' \
+    > "$TMP/ev.jsonl"
+  run bash -c "'$SCRIPTS/codex-exec.sh' render '$TMP/o.log' '$TMP/o.md' < '$TMP/ev.jsonl'"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '^session id: ' "$TMP/o.log")" = "1" ]
+  [ "$(grep -cF 'garbage not json' "$TMP/o.log")" = "1" ]
+  run bash -c "LC_ALL=C grep -q \$'\x1b' '$TMP/o.log'"
+  [ "$status" -ne 0 ]
+}
+
+@test "render: command shown once, output hidden, failure marked red-path" {
+  printf '%s\n' \
+    '{"type":"item.started","item":{"id":"i0","type":"command_execution","command":"echo hi","status":"in_progress"}}' \
+    '{"type":"item.completed","item":{"id":"i0","type":"command_execution","command":"echo hi","aggregated_output":"SECRET_OUTPUT","exit_code":0,"status":"completed"}}' \
+    '{"type":"item.started","item":{"id":"i1","type":"command_execution","command":"false","status":"in_progress"}}' \
+    '{"type":"item.completed","item":{"id":"i1","type":"command_execution","command":"false","aggregated_output":"","exit_code":1,"status":"completed"}}' \
+    > "$TMP/ev.jsonl"
+  run bash -c "'$SCRIPTS/codex-exec.sh' render '$TMP/o.log' '$TMP/o.md' < '$TMP/ev.jsonl'"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'$ echo hi'* && "$output" != *SECRET_OUTPUT* && "$output" == *'exit 1: false'* ]]
+}
+
+@test "render: file change as kind + cwd-relative path" {
+  printf '%s\n' \
+    "{\"type\":\"item.completed\",\"item\":{\"id\":\"i2\",\"type\":\"file_change\",\"changes\":[{\"path\":\"$TMP/CHANGES.md\",\"kind\":\"add\"}],\"status\":\"completed\"}}" \
+    > "$TMP/ev.jsonl"
+  run bash -c "cd '$TMP' && '$SCRIPTS/codex-exec.sh' render '$TMP/o.log' '$TMP/o.md' < '$TMP/ev.jsonl'"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'add CHANGES.md'* && "$output" != *"add $TMP/CHANGES.md"* ]]
+}
+
+@test "render: full agent message, report path once at end" {
+  printf '%s\n' \
+    '{"type":"item.completed","item":{"id":"i3","type":"agent_message","text":"first msg"}}' \
+    '{"type":"item.completed","item":{"id":"i4","type":"agent_message","text":"final msg with a very long body that must not be truncated"}}' \
+    > "$TMP/ev.jsonl"
+  run bash -c "'$SCRIPTS/codex-exec.sh' render '$TMP/o.log' '$TMP/o.md' < '$TMP/ev.jsonl'"
+  [ "$status" -eq 0 ]
+  [ "$(grep -cF "report: $TMP/o.md" <<<"$output")" = "1" ]
+  [[ "$output" == *'first msg'* && "$output" == *'must not be truncated'* ]]
+}
