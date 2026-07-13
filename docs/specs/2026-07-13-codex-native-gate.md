@@ -100,8 +100,8 @@ orchestrator keeps everything that publishes. Reviewer priority stays
 
 - `plugin/scripts/codex-exec.sh` — add `--role exec|review` (injects the two
   `-c` approval keys + rendered policy), `--output-schema` passthrough
-  (fresh + resume), `--strict-config`, `preflight --escalations <role>`
-  canary, and an `audit <log>` subcommand (extract command_execution
+  (fresh + resume), `preflight --escalations <role>` canary (exit-0 misconfig
+  guard), and an `audit <log>` subcommand (extract command_execution
   signatures for reconciliation). Sandbox case and sentinel untouched.
 - NEW `plugin/config/codex-policies/` — exec + review policy templates
   (trusted source), report JSON schema.
@@ -122,8 +122,9 @@ orchestrator keeps everything that publishes. Reviewer priority stays
 - `plugin/skills/routing/references/delegation-contract.md` — auto_review
   config shape, resume form, policy hash, canary, report fields.
 - `docs/gotchas/codex.md` — record: auto_review live results, the exact
-  denial string, silent `-c` typo footgun (+ `--strict-config`), missing
-  escalation events in `--json`, git filters risk on escalated `git add`.
+  denial string, silent `-c` typo footgun (caught by the canary's exit-0
+  check), missing escalation events in `--json`, git filters risk on
+  escalated `git add`.
 - `.claude/conveyor.json` — optional PAT keychain service name;
   pluginVersion bump. No routing knobs, no secrets, no token commands.
 - `/conveyor:init` — optional one-time PAT setup + validation.
@@ -147,9 +148,9 @@ orchestrator keeps everything that publishes. Reviewer priority stays
 - Round 3 convergence: both independently proposed native auto_review with an
   orchestrator-held publication gate.
 - codex-gpt-5.6-sol won: per-run templated inline policy (pins repo/PR/issue),
-  `--strict-config`, hooks/filters commit guard, PAT + isolated-HOME design
-  (adopted as the opt-in), reviewer-label least privilege,
-  `inferred-auto-reviewed` audit marking.
+  hooks/filters commit guard, PAT + isolated-HOME design (adopted as the
+  opt-in), reviewer-label least privilege, `inferred-auto-reviewed` audit
+  marking.
 - claude-fable-5 won: two-role policy split, canary preflight + exact denial
   string, deny→report→orchestrator loop, sentinel semantics, `audit`
   subcommand, fallback-with-user-notice.

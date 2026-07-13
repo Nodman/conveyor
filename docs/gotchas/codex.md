@@ -25,7 +25,7 @@ Verified against the real CLI (authed, gpt-5.6-sol) in a throwaway git repo unde
 
 - FRESH `codex exec`: escalated `gh api --method GET repos/<o>/<r>` executed with exit 0 (network read succeeded, no denial). Inline `auto_review.policy` (a `jq -Rs .` JSON string) accepted.
 - RESUME `codex exec resume <sid> -c auto_review.policy=… -c 'sandbox_mode="workspace-write"'`: same escalated read executed, exit 0. Inline policy accepted on resume too. (`resume` still rejects `-s` — set sandbox via `-c sandbox_mode`.)
-- PAT env passthrough (`GH_TOKEN`/`GH_CONFIG_DIR`): NOT live-verified — `externalAgents.codexPatService` is unset on this host (opt-in). Runner injection is unit-tested only.
+- PAT isolation (`GH_TOKEN` + isolated `HOME`/`GH_CONFIG_DIR` + `-c shell_environment_policy.include_only=[…]`): NOT live-verified — `externalAgents.codexPatService` is unset on this host (opt-in). Runner and canary injection are unit-tested only; live env-passthrough verification is still pending a configured PAT.
 
 ## `--strict-config` validates the WHOLE config.toml, not just `-c` overrides
 Symptom: `codex exec --strict-config …` dies before running with e.g. `Error loading config.toml: …:9:1: unknown configuration field 'mcp_servers.pencil.type'`. codex never starts; nothing escalates.

@@ -76,7 +76,7 @@ render_policy() { # role name workdir pr issue
 
 Files: `codex-exec.sh` (run_codex arg loop, runner heredoc), `tests/helpers/bin/codex`.
 Interface: `run … --role exec|review [--pr N --issue N] [--output-schema F]`; role adds
-`--strict-config -c approval_policy -c approvals_reviewer -c auto_review.policy` to
+`-c approval_policy -c approvals_reviewer -c auto_review.policy` to
 BOTH fresh and resume command lines; policy JSON is `jq -Rs .` of the rendered text,
 written next to the report (`<out>.policy.json`) and injected in the runner via
 `-c "auto_review.policy=$(cat <file>)"` (no quoting fights in the heredoc).
@@ -91,15 +91,14 @@ written next to the report (`<out>.policy.json`) and injected in the runner via
     --pr 12 --issue 7 --output-schema '$SCRIPTS/../config/codex-policies/report.schema.json' \
     --out '$TMP/r.md' --prompt-file '$TMP/p.md' --visibility background"
   [ "$status" -eq 0 ]
-  grep -q -- '--strict-config' "$TMP/r.run.sh"
   grep -q 'approvals_reviewer="auto_review"' "$TMP/r.run.sh"
   grep -q 'auto_review.policy=' "$TMP/r.run.sh"
   grep -q -- '--output-schema' "$TMP/r.run.sh"
   [ -f "$TMP/r.policy.json" ]
 }
 ```
-- [ ] Verify fail; implement; verify pass. Stub `codex` gains `--strict-config`:
-  with it, any `-c key=…` outside a known-key list exits 1 (mirrors real CLI).
+- [ ] Verify fail; implement; verify pass. (`--strict-config` was later dropped —
+  see gotchas; the canary's exit-0 check is the misconfig guard.)
 - [ ] Commit: `feat(codex-exec): --role escalation config + --output-schema passthrough`
 
 ### Task 3: canary preflight
@@ -173,7 +172,7 @@ Present → runner exports `GH_TOKEN="$(security find-generic-password -s <svc> 
 ### Task 6: live verification (TDD n/a — real CLI runbook)
 
 TDD n/a: these prove real-CLI arg shapes, which stubs cannot.
-- [ ] `render-policy review … | jq -Rs .` → fresh `codex exec --strict-config -c auto_review.policy=…`
+- [ ] `render-policy review … | jq -Rs .` → fresh `codex exec -c auto_review.policy=…`
   canary run in a scratch repo: escalated `gh api --method GET repos/<o>/<r>` executes.
 - [ ] Same via `codex exec resume <sid> -c …` — inline policy accepted on resume.
 - [ ] If PAT configured: env passthrough carries `GH_TOKEN` into escalated command.

@@ -11,8 +11,9 @@ Each entry: `## YYYY-MM-DD — <topic>` followed by bullets — chose X over Y, 
   control without the key is denied) and a user ruling against broker
   machinery. Orchestrator keeps push, PR creation, card moves, merge; diff
   judgment moves to pre-push.
-- auto_review is an LLM, not a guarantee: `--strict-config` + a per-role
-  escalation canary catch misconfig; post-run reconciliation against GitHub
+- auto_review is an LLM, not a guarantee: a per-role escalation canary
+  (exit-0 check — `--strict-config` was dropped, it bricks real configs)
+  catches misconfig; post-run reconciliation against GitHub
   (ids, prefixes, authors, head SHA) catches over-approval — mismatch pulls
   the approval label and forces a fresh review.
 - Credentials: user's gh auth by default; repo-scoped PAT + isolated
