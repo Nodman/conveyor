@@ -20,9 +20,9 @@ Scores 1-10, higher better.
 
 - **Agent tool** — permissions, in-band result, SendMessage resume, visible
   in token budgets.
-- **codex CLI** — file report + log + sentinel-carries-exit-code, session-id
-  resume only, no mid-run steering, INVISIBLE to harness token budgets (track
-  separately), parallel writes need worktree isolation.
+- **codex CLI** — full access (`danger-full-access`); no mid-run steering;
+  file report + log + sentinel-carries-exit-code; session-id resume only;
+  audit post-hoc; INVISIBLE to harness token budgets (track separately).
 
 ## Availability
 

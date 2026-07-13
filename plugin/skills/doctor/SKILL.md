@@ -35,6 +35,11 @@ re-run only when something looks wrong.
      pool rows → note codex lanes dormant (install + auth codex to enable);
      preflight passes but an earlier doctor run flagged dormancy → note codex
      lanes now active.
+   - `gh api repos/{owner}/{repo}/branches/main/protection` returns 404 → WARN:
+     `main` lacks branch protection (agents and humans can direct/force-push).
+     Fix: enable branch protection on `main` (repo settings, or `gh api
+     --method PUT …/branches/main/protection`). Warn-only — report and move on,
+     never blocks.
 3. Report findings as bullets with the concrete fix for each (the exact
    `card.sh move`, label, or comment command). Ask before fixing anything
    that changes board state; never move a card to Done (automation only).

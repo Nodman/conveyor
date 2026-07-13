@@ -48,9 +48,9 @@ tell the user.
    High-risk review (security/concurrency/data-loss/auth/migration) →
    Fable + cross-family second opinion.
 5. Runner constraints: live steering / tool permissions / in-band report /
-   teammate resume → Agent tool. Isolated well-specified implementation or
-   read-only review → codex; write jobs in dedicated worktrees; codex
-   throttled/missing → fall back to Opus.
+   teammate resume → Agent tool. Codex is a full lane (edits, tests, commits,
+   pushes, gates) — no sandbox constraint; but no mid-run steering, so prefer
+   well-scoped tasks. Codex throttled/missing → fall back to Opus.
 6. Among floor-passers, pick lowest expected TOTAL burn: output + likely
    repair runs + orchestration overhead, across whichever quota pool it
    drains — not nominal per-token price.

@@ -24,10 +24,7 @@ Config: `.claude/conveyor.json` (labels, board ids). Board moves go through
 ## Process
 
 1. `gh pr view <n>` (body, `Fixes #` issue), `gh pr diff <n>`; read the linked
-   issue's acceptance criteria and any linked spec/plan in docs/. An advisory
-   findings file from a cross-family reviewer may accompany the spawn — verify
-   each finding yourself (confirm or dismiss); only findings YOU confirm get
-   posted, under your name.
+   issue's acceptance criteria and any linked spec/plan in docs/.
 2. For hunks you can't judge in isolation, Read the full changed file and its
    call sites/tests on the PR branch.
 3. Review in severity order:
@@ -61,6 +58,10 @@ Config: `.claude/conveyor.json` (labels, board ids). Board moves go through
   can't anchor to a changed diff line (cross-file issue, missing change) goes
   as a bullet in the review `body` instead. Then move the card back:
   `card.sh move <issue> inProgress`.
+
+  Transport: a codex run performing this gate posts its own review and labels
+  via gh under its `**[<agent-name>]**` prefix (verdict semantics identical),
+  and reports card moves to the orchestrator rather than running `card.sh`.
 
   Prefix every comment body you post — review summary, inline findings, thread
   replies — with your spawn name: `**[<agent-name>]** …`.

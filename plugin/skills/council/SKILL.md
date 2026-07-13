@@ -34,16 +34,16 @@ live in `${CLAUDE_PLUGIN_ROOT}/scripts/`.
    - claude runner → Agent tool, `name: claude-<model>`, `model:` the config
      value up to the first dash (`fable-5` → `fable`), read-only instructions.
    - codex runner → `codex-exec.sh run --name codex-<model> --model <model>
-     --out <dir>/<name>-r1.md --prompt-file <dir>/<name>-r1-prompt.md`
-     (script enforces the read-only sandbox).
+     --workdir <repo root> --out <dir>/<name>-r1.md --prompt-file
+     <dir>/<name>-r1-prompt.md` (script enforces the read-only sandbox).
    Wait on sentinels/agent returns; poll every ~15s, cap 15 minutes. Timeout
    or failure → drop that member and tell the user.
 3. **Round 2 — rebuttal.** Each member receives all other proposals verbatim:
    "Attack or concede each point. Concede only what is genuinely better.
    End with your revised proposal." claude runners → SendMessage to the named
    agent; codex runners → `codex-exec.sh run --resume "$(codex-exec.sh
-   session-id <dir>/<name>-r1.log)" --out <dir>/<name>-r2.md …`. Resume is
-   always by explicit session id.
+   session-id <dir>/<name>-r1.log)" --workdir <repo root> --out
+   <dir>/<name>-r2.md …`. Resume is always by explicit session id.
 4. **Verdict.** You (main session) judge the revised proposals: points of
    agreement are settled; disagreements you resolve with stated reasoning;
    merge the strongest parts into one design. Present: verdict, then a short
