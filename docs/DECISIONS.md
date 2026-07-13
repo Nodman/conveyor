@@ -2,22 +2,34 @@
 
 Each entry: `## YYYY-MM-DD — <topic>` followed by bullets — chose X over Y, because…
 
-## 2026-07-13 — Codex gets a typed broker, never a credential
+## 2026-07-13 — Codex acts natively under auto_review, no broker
 
-- All codex GitHub/git writes go through a typed action broker
-  (`codex-actions.sh`) under the orchestrator's gh auth — chose this over a
-  repo-scoped PAT, because a prompt-injected model with any token and egress
-  can exceed API scopes, and no secret may enter model-controlled execution.
-- Codex verdicts are full review rounds (no claude re-verification); the
-  broker validates actions, not reasoning. Advisory proxying deleted — it
-  double-burned every review.
+- Codex GitHub/git writes run natively via codex's `auto_review` escalation
+  approvals (deny-by-default per-run policy from trusted templates) — chose
+  this over the same-day typed-broker ruling after live verification
+  (0.144.1: escalated network + protected-`.git` commit both work headless;
+  control without the key is denied) and a user ruling against broker
+  machinery. Orchestrator keeps push, PR creation, card moves, merge; diff
+  judgment moves to pre-push.
+- auto_review is an LLM, not a guarantee: `--strict-config` + a per-role
+  escalation canary catch misconfig; post-run reconciliation against GitHub
+  (ids, prefixes, authors, head SHA) catches over-approval — mismatch pulls
+  the approval label and forces a fresh review.
+- Credentials: user's gh auth by default; repo-scoped PAT + isolated
+  HOME/GH_CONFIG_DIR is opt-in hardening (user ruling). Never an arbitrary
+  token command in committed config.
+- Codex verdicts are full review rounds (no claude re-verification).
+  Advisory proxying demoted to the misconfig fallback — it double-burned
+  every review.
 - Reviewer ladder 5.6-sol → Fable → Opus, skipping the PR's material authors;
   `family` = model lineage. High-risk implementation always routes to Opus so
   the cross-provider opinion is never a self-review.
 - Ratified: 5.6 authors most code, so Fable gates most PRs by volume —
   "5.6 top reviewer" holds per-eligibility. Strongest author +
   second-strongest gate over the reverse.
-- Spec: docs/specs/2026-07-13-codex-gate-broker.md.
+- Approval forwarding to the lead is impossible headless; the substitute is
+  deny → structured report → orchestrator acts.
+- Spec: docs/specs/2026-07-13-codex-native-gate.md.
 
 ## 2026-07-12 — Model routing lives inside conveyor
 
