@@ -329,6 +329,18 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [[ "$output" == *"auto_review not active"* ]]
 }
 
+@test "preflight --escalations canary prompt requests escalation (both roles)" {
+  use_cfg
+  run bash -c "cd '$TMP' && CODEX_STUB_PROMPT_CAPTURE='$TMP/cap-e' CODEX_STUB_ESCALATION=ok $CX '$SCRIPTS/codex-exec.sh' preflight --escalations exec"
+  [ "$status" -eq 0 ]
+  grep -qF 'escalated-permissions mechanism' "$TMP/cap-e"
+  grep -qF '.git' "$TMP/cap-e"
+  run bash -c "cd '$TMP' && CODEX_STUB_PROMPT_CAPTURE='$TMP/cap-r' CODEX_STUB_ESCALATION=ok $CX '$SCRIPTS/codex-exec.sh' preflight --escalations review"
+  [ "$status" -eq 0 ]
+  grep -qF 'escalated-permissions mechanism' "$TMP/cap-r"
+  grep -qF 'network' "$TMP/cap-r"
+}
+
 @test "preflight --escalations second run hits cache, skips codex exec" {
   use_cfg
   run bash -c "cd '$TMP' && CODEX_STUB_ESCALATION=ok $CX '$SCRIPTS/codex-exec.sh' preflight --escalations exec"

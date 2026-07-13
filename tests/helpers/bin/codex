@@ -38,7 +38,7 @@ for a in "$@"; do
   if [[ "$prev" == "-o" ]]; then out="$a"; fi
   prev="$a"
 done
-if [[ ! -t 0 ]]; then cat >/dev/null; fi
+if [[ ! -t 0 ]]; then cat > "${CODEX_STUB_PROMPT_CAPTURE:-/dev/null}"; fi
 if [[ -n "${CODEX_STUB_ESCALATION:-}" ]]; then
   # canary always runs in a throwaway dir → real CLI refuses without --skip-git-repo-check
   has_skip=""
@@ -49,8 +49,10 @@ if [[ -n "${CODEX_STUB_ESCALATION:-}" ]]; then
   fi
   case "$CODEX_STUB_ESCALATION" in
     ok)
+      # emit both role canary shapes (exit 0) so exec and review detection both pass
       echo '{"type":"thread.started","thread_id":"0000-canary"}'
-      echo '{"type":"item.completed","item":{"id":"c0","type":"command_execution","command":"git -c core.hooksPath=/dev/null commit --allow-empty --no-verify --no-gpg-sign -m conveyor-canary","aggregated_output":"","exit_code":0,"status":"completed"}}'
+      echo '{"type":"item.completed","item":{"id":"c0","type":"command_execution","command":"gh api --method GET repos/acme/widget --jq .full_name","aggregated_output":"","exit_code":0,"status":"completed"}}'
+      echo '{"type":"item.completed","item":{"id":"c1","type":"command_execution","command":"git -c core.hooksPath=/dev/null commit --allow-empty --no-verify --no-gpg-sign -m conveyor-canary","aggregated_output":"","exit_code":0,"status":"completed"}}'
       echo '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}' ;;
     denied)
       echo '{"type":"item.completed","item":{"id":"c0","type":"agent_message","text":"Approval policy is currently never; refusing the privileged command."}}' ;;

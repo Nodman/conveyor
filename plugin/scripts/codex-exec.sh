@@ -80,16 +80,21 @@ preflight_escalations() {
   git init -q "$scratch" 2>/dev/null || true
   git -C "$scratch" config user.email "codex@conveyor.invalid" 2>/dev/null || true
   git -C "$scratch" config user.name "canary-$role" 2>/dev/null || true
-  local policy pat
+  local policy pat reason
   if [[ "$role" == exec ]]; then
     policy="$(render_policy exec --name "canary-$role" --workdir "$scratch")"
     pat='git -c core.hooksPath=/dev/null commit --allow-empty --no-verify --no-gpg-sign --author="canary-'"$role"' <codex@conveyor.invalid>" -m conveyor-canary'
+    reason="The sandbox protects .git."
   else
     policy="$(render_policy review --name "canary-$role" --workdir "$scratch" --pr 0 --issue 0)"
     pat="gh api --method GET repos/$(cfg .owner)/$(cfg .repo) --jq .full_name"
+    reason="The sandbox blocks network."
   fi
   local prompt="$scratch/canary-prompt.md"
-  printf 'Run exactly this one command and nothing else:\n%s\n' "$pat" > "$prompt"
+  # codex escalates ONLY when the prompt explicitly asks for escalated permissions;
+  # a bare command prompt runs sandboxed and the canary fails closed (QA 2026-07-13)
+  printf '%s Using the escalated-permissions mechanism of your shell tool (request approval with a justification), run exactly this one command and nothing else, then report what it returned:\n%s\n' \
+    "$reason" "$pat" > "$prompt"
   local pj; pj="$(printf '%s' "$policy" | jq -Rs .)"
   local pat_svc; pat_svc="$(cfg_or '.externalAgents.codexPatService' '')"
   local env_exports=""; local -a pat_args=()
