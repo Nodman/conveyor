@@ -47,7 +47,6 @@ compatible runner MUST provide:
   carries the exit code, touched after exit in every visibility mode.
 - Session-id capture from the run header (for resume; never `--last`).
 - Explicit timeout + background poll on the sentinel.
-- Model-agnostic `-m <model>` (excluded models stay summonable ad hoc, e.g.
-  outages).
+- Model-agnostic `-m <model>`.
 
 ~30 lines of shell for a minimal runner.

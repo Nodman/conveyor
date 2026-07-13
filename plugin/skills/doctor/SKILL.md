@@ -1,9 +1,12 @@
 ---
 name: doctor
-description: Use at task pickup, when a board card looks wrong, or after config/board changes. Runs the drift script and session-level checks; proposes fixes.
+description: Run at the START of any conveyor activity in a session (work, auto, brainstorming, council, executing-tasks) — and again when a board card looks wrong or after config/board changes. Runs the drift script and session-level checks; proposes fixes.
 ---
 
 # /conveyor:doctor
+
+Session gate: run once before the first conveyor activity of a session;
+re-run only when something looks wrong.
 
 1. Run `${CLAUDE_PLUGIN_ROOT}/scripts/board-doctor.sh` from the repo root.
 2. Session-level checks the script can't do:
@@ -21,6 +24,10 @@ description: Use at task pickup, when a board card looks wrong, or after config/
      cannot apply lifecycle labels, comment on issues, or file backlog
      issues). Fix: `scaffold.sh --grant-label-perms` — ask the user first,
      never write permissions silently.
+   - `link-agent-skills.sh check` prints DRIFT → run
+     `${CLAUDE_PLUGIN_ROOT}/scripts/link-agent-skills.sh` without asking
+     (local symlinks in a gitignored dir). Codex can't see the TDD or
+     project skills until they're linked into `.agents/skills/`.
    - `codex-exec.sh detect` prints `unset` → flag: council/external agents
      will interrupt to ask on first use. Fix: `codex-exec.sh set-visibility
      <window|background>` — ask the user which, never write config silently.

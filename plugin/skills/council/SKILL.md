@@ -10,6 +10,7 @@ live in `${CLAUDE_PLUGIN_ROOT}/scripts/`.
 
 ## Setup
 
+- /conveyor:doctor first if it hasn't run this session.
 - `codex-exec.sh preflight` — failure → report it, offer plain
   conveyor:brainstorming instead.
 - Members: `jq -c '.council.members // [{"runner":"claude","model":"fable-5"},{"runner":"codex","model":"gpt-5.6-sol"}]' .claude/conveyor.json`
