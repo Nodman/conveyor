@@ -51,11 +51,12 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    codex-<model>--<issue>-<n> --model <model> --out <report> --output-schema
    ${CLAUDE_PLUGIN_ROOT}/config/report.schema.json --prompt-file <f>`; the
    prompt file carries the task text verbatim, output bar, report contract,
-   comment-prefix rule, and style rule. Codex runs full-access in its own
-   dedicated per-issue worktree (never a shared checkout): it edits, runs ANY
-   tests, commits with author `<agent-name> <codex@conveyor.invalid>` plus
-   `Conveyor-Model:` / `Conveyor-Session:` trailers, and pushes its own feature
-   branch. Sentinel wait: poll ~15s; at ~15 min check liveness (log growth /
+   comment-prefix rule, style rule, and the commit-identity rule (commit with
+   `git -c user.name=<agent-name> -c user.email=codex@conveyor.invalid commit`
+   plus `Conveyor-Model: <model>` and `Conveyor-Session: <session-id>`
+   trailers). Codex runs full-access in its own dedicated per-issue worktree
+   (never a shared checkout): it edits, runs ANY tests, commits under that
+   identity, and pushes its own feature branch. Sentinel wait: poll ~15s; at ~15 min check liveness (log growth /
    visibility pane) — kill and resume by session id
    (`codex-exec.sh session-id <log>`) only on a dead log. Fix rounds resume by
    session id, one targeted repair max, then escalate per routing. One
@@ -78,8 +79,10 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    red checks → treat as a blocking finding, route to the executor.
 2. `card.sh move <issue> agentReview`. Spawn the review gate per routing (never
    a cheaper model override; never the PR's sole-author family). A claude gate
-   runs **pr-reviewer**; a codex gate runs via `codex-exec.sh run` and posts its
-   own review + labels directly under its `**[<agent-name>]**` prefix. Round 1 =
+   runs **pr-reviewer**; a codex gate runs via `codex-exec.sh run --sandbox
+   danger-full-access` (default read-only has no network → cannot post) and
+   posts its own review + labels directly under its `**[<agent-name>]**`
+   prefix. Round 1 =
    full charter; re-reviews = scoped to the fixes + their comment threads (say
    so in the prompt).
 3. Blocking findings: route each to the executor that wrote it (resume by name
