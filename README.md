@@ -128,7 +128,7 @@ path).
 - Every run opens with an explicit agreement prompt. The first run also
   grants auto-merge permissions (`Bash(gh pr merge:*)` plus an autoMode rule
   in `.claude/settings.json`).
-- A fresh lead subagent per card runs the full lifecycle and squash-merges
+- The session runs each card's full lifecycle itself and squash-merges
   once CI is green and `ready-to-merge` is applied.
 - Ready for dev empty → Backlog triage: groomed issues get promoted,
   feature-sized ones get spec'd and planned with **spec-judge** /
