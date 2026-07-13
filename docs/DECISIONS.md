@@ -2,6 +2,23 @@
 
 Each entry: `## YYYY-MM-DD — <topic>` followed by bullets — chose X over Y, because…
 
+## 2026-07-13 — Codex gets a typed broker, never a credential
+
+- All codex GitHub/git writes go through a typed action broker
+  (`codex-actions.sh`) under the orchestrator's gh auth — chose this over a
+  repo-scoped PAT, because a prompt-injected model with any token and egress
+  can exceed API scopes, and no secret may enter model-controlled execution.
+- Codex verdicts are full review rounds (no claude re-verification); the
+  broker validates actions, not reasoning. Advisory proxying deleted — it
+  double-burned every review.
+- Reviewer ladder 5.6-sol → Fable → Opus, skipping the PR's material authors;
+  `family` = model lineage. High-risk implementation always routes to Opus so
+  the cross-provider opinion is never a self-review.
+- Ratified: 5.6 authors most code, so Fable gates most PRs by volume —
+  "5.6 top reviewer" holds per-eligibility. Strongest author +
+  second-strongest gate over the reverse.
+- Spec: docs/specs/2026-07-13-codex-gate-broker.md.
+
 ## 2026-07-12 — Model routing lives inside conveyor
 
 - Routing skill ships in `plugin/skills/routing/`, not a second plugin
