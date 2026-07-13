@@ -46,11 +46,17 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    `model:` explicitly. Claude executors run tests and commit; they never open
    PRs.
 
-   Codex lane (route = codex): spawn via `${CLAUDE_PLUGIN_ROOT}/scripts/codex-exec.sh
+   Codex lane (route = codex): first run
+   `${CLAUDE_PLUGIN_ROOT}/scripts/link-agent-skills.sh` from the worktree
+   root — codex resolves `.agents/skills` per root, and a worktree is its
+   own root; without this codex can't see the TDD or project skills. Spawn
+   via `${CLAUDE_PLUGIN_ROOT}/scripts/codex-exec.sh
    run --sandbox workspace-write --workdir <issue worktree> --name
    codex-<model>--<issue>-<n> --model <model> --out <report> --prompt-file
    <f>`; the prompt file carries the task text verbatim, output bar, report
-   contract, comment-prefix rule, and style rule. Wait on the sentinel
+   contract, comment-prefix rule, style rule, and the instruction to follow
+   the `test-driven-development` skill (TDD is mandatory for codex the same
+   as for claude executors). Wait on the sentinel
    (explicit timeout + poll). Codex edits files and runs LOCAL tests in the
    worktree — it CANNOT commit, push, or reach the network (protected `.git`,
    no DNS; docs/gotchas/codex.md workspace-write live results). After the

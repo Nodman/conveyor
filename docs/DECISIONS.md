@@ -2,6 +2,21 @@
 
 Each entry: `## YYYY-MM-DD — <topic>` followed by bullets — chose X over Y, because…
 
+## 2026-07-13 — Routing paradigm: cost-ranked pool, escalation over thrift
+
+- Pool scores rank cost instead of a code benchmark; gpt-5.5 re-admitted;
+  cheap models explore first, standing permission to escalate on a missed
+  bar — user ruling. Chose this over benchmark-ranked rows because flat-rate
+  quotas make output quality, not per-token price, the real cost.
+- The rules themselves live in `plugin/skills/routing/` (SKILL.md = policy,
+  model-pool.md = data) — this entry records the shift, not the ruling.
+- Codex sees skills via symlinks in `.agents/skills/` (codex scans cwd →
+  repo root; worktrees are their own root, so links are made per root).
+  `link-agent-skills.sh` creates them; doctor checks them; TDD is mandatory
+  for codex executors same as claude ones.
+- Doctor is now a session gate: run before the first conveyor activity of a
+  session, not only at task pickup.
+
 ## 2026-07-13 — Codex runs yolo; structure, not a sandbox, is the guard
 
 - Codex runs unsandboxed (`danger-full-access`, exec mode) — chose this over
