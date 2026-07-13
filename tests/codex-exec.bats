@@ -301,3 +301,18 @@ wait_sentinel() { # $1=path — poll up to ~5s
   use_cfg
   run -2 bash -c "cd '$TMP' && '$SCRIPTS/codex-exec.sh' render-policy review --name x --workdir '$TMP'"
 }
+
+@test "run --role review writes approval config into the runner" {
+  use_cfg
+  echo hi > "$TMP/p.md"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol \
+    --model gpt-5.6-sol --sandbox workspace-write --workdir '$TMP' --role review \
+    --pr 12 --issue 7 --output-schema '$SCRIPTS/../config/codex-policies/report.schema.json' \
+    --out '$TMP/r.md' --prompt-file '$TMP/p.md' --visibility background"
+  [ "$status" -eq 0 ]
+  grep -q -- '--strict-config' "$TMP/r.run.sh"
+  grep -q 'approvals_reviewer="auto_review"' "$TMP/r.run.sh"
+  grep -q 'auto_review.policy=' "$TMP/r.run.sh"
+  grep -q -- '--output-schema' "$TMP/r.run.sh"
+  [ -f "$TMP/r.policy.json" ]
+}

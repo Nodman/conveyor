@@ -17,6 +17,21 @@ if [[ -n "$has_resume" && -n "$has_color" ]]; then
   echo "error: unexpected argument '--color' found" >&2
   exit 2
 fi
+has_strict=""
+for a in "$@"; do [[ "$a" == "--strict-config" ]] && has_strict=1; done
+if [[ -n "$has_strict" ]]; then
+  prev=""
+  for a in "$@"; do
+    if [[ "$prev" == "-c" ]]; then
+      key="${a%%=*}"
+      case "$key" in
+        sandbox_mode|approval_policy|approvals_reviewer|auto_review.policy) ;;
+        *) echo "error: unknown config key '$key' (--strict-config)" >&2; exit 1 ;;
+      esac
+    fi
+    prev="$a"
+  done
+fi
 out="" prev=""
 for a in "$@"; do
   if [[ "$prev" == "-o" ]]; then out="$a"; fi

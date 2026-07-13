@@ -140,6 +140,7 @@ render_stream() {
 
 run_codex() {
   local name="" model="" out="" resume="" prompt_file="" vis="" sandbox_mode="read-only" workdir="" pane=""
+  local role="" pr="" issue="" output_schema=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --name) name="$2"; shift 2 ;;
@@ -150,11 +151,17 @@ run_codex() {
       --visibility) vis="$2"; shift 2 ;;
       --sandbox) sandbox_mode="$2"; shift 2 ;;
       --workdir) workdir="$2"; shift 2 ;;
+      --role) role="$2"; shift 2 ;;
+      --pr) pr="$2"; shift 2 ;;
+      --issue) issue="$2"; shift 2 ;;
+      --output-schema) output_schema="$2"; shift 2 ;;
       *) usage ;;
     esac
   done
   [[ -n "$name" && -n "$model" && -n "$out" && -n "$prompt_file" ]] || usage
   case "$sandbox_mode" in read-only|workspace-write) ;; *) usage ;; esac
+  case "$role" in ""|exec|review) ;; *) usage ;; esac
+  [[ -z "$output_schema" || -f "$output_schema" ]] || die "no output schema: $output_schema"
   [[ -f "$prompt_file" ]] || die "no prompt file: $prompt_file"
   [[ -z "$workdir" || -d "$workdir" ]] || die "no workdir: $workdir"
   # runner cd's to workdir, so relative --out/--prompt-file would resolve there
@@ -168,6 +175,15 @@ run_codex() {
   local codex_cmd="codex exec -m $model" sandbox="-s $sandbox_mode"
   # resume subcommand rejects -s; set the sandbox via config instead
   if [[ -n "$resume" ]]; then codex_cmd="codex exec resume $resume"; sandbox="-c 'sandbox_mode=\"$sandbox_mode\"'"; fi
+  local role_flags="" schema_flag=""
+  if [[ -n "$role" ]]; then
+    local policy_json="${out%.md}.policy.json"
+    render_policy "$role" --name "$name" --workdir "$workdir" \
+      ${pr:+--pr "$pr"} ${issue:+--issue "$issue"} | jq -Rs . > "$policy_json"
+    # \$(cat …) stays literal in the runner: policy is read at run time, no heredoc quoting fight
+    role_flags="--strict-config -c 'approval_policy=\"on-request\"' -c 'approvals_reviewer=\"auto_review\"' -c \"auto_review.policy=\$(cat $policy_json)\""
+  fi
+  [[ -n "$output_schema" ]] && schema_flag="--output-schema $output_schema"
   local cd_line=""
   [[ -n "$workdir" ]] && cd_line="cd $workdir || { echo 1 > $sentinel; exit 1; }"
   cat > "$runner" <<EOF
@@ -177,7 +193,7 @@ $cd_line
 printf '\e[2m--- prompt ---\n'
 cat $prompt_file
 printf -- '--------------\e[0m\n'
-$codex_cmd $sandbox --json -o $out - < $prompt_file 2>&1 | $SCRIPT_DIR/codex-exec.sh render $log $out
+$codex_cmd $sandbox $role_flags $schema_flag --json -o $out - < $prompt_file 2>&1 | $SCRIPT_DIR/codex-exec.sh render $log $out
 echo "\${PIPESTATUS[0]}" > $sentinel
 EOF
   chmod +x "$runner"
