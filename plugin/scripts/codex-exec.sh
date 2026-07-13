@@ -51,6 +51,43 @@ preflight() {
   echo ok
 }
 
+preflight_escalations() {
+  local role="${1:-}"
+  case "$role" in exec|review) ;; *) usage ;; esac
+  need codex
+  local cache_dir="$PWD/.conveyor/canary"
+  local scratch; scratch="$(mktemp -d)"
+  local policy
+  if [[ "$role" == exec ]]; then
+    git init -q "$scratch" 2>/dev/null || true
+    policy="$(render_policy exec --name "canary-$role" --workdir "$scratch")"
+  else
+    policy="$(render_policy review --name "canary-$role" --workdir "$scratch" --pr 0 --issue 0)"
+  fi
+  local sha; sha="$(printf '%s' "$policy" | shasum 2>/dev/null | awk '{print $1}')"
+  sha="${sha:0:12}"; [[ -n "$sha" ]] || sha="nosha"
+  local ver; ver="$(codex --version 2>/dev/null | tr -dc 'A-Za-z0-9.')"
+  [[ -n "$ver" ]] || ver="unknown"
+  local prompt="$scratch/canary-prompt.md"
+  if [[ "$role" == exec ]]; then
+    printf 'Prove escalated commits work: run this and nothing else: git commit --allow-empty -m canary\n' > "$prompt"
+  else
+    printf 'Prove escalated reads work: run this and nothing else: gh api repos/%s/%s\n' "$(cfg .owner)" "$(cfg .repo)" > "$prompt"
+  fi
+  local out="$scratch/canary.out" pj
+  pj="$(printf '%s' "$policy" | jq -Rs .)"
+  ( cd "$scratch" && codex exec -m canary -s workspace-write --strict-config \
+      -c 'approval_policy="on-request"' -c 'approvals_reviewer="auto_review"' \
+      -c "auto_review.policy=$pj" --json - < "$prompt" ) > "$out" 2>&1 || true
+  if grep -qF 'Approval policy is currently never' "$out"; then
+    die_code3 "canary $role: auto_review not active (misconfig) — escalations denied; fix approval_policy/approvals_reviewer or use the advisory fallback"
+  fi
+  grep -q '"command_execution"' "$out" || die_code3 "canary $role: auto_review not active — no escalated command executed"
+  mkdir -p "$cache_dir"
+  : > "$cache_dir/$role.$ver.$sha"
+  echo ok
+}
+
 detect() {
   if [[ -n "${TMUX:-}" ]]; then echo tmux
   elif [[ "${LC_TERMINAL:-}" == "iTerm2" || "${TERM_PROGRAM:-}" == "iTerm.app" ]]; then echo iterm
@@ -221,7 +258,9 @@ EOF
 }
 
 case "${1:-}" in
-  preflight) preflight ;;
+  preflight)
+    shift
+    if [[ "${1:-}" == "--escalations" ]]; then shift; preflight_escalations "$@"; else preflight; fi ;;
   detect) detect ;;
   set-visibility) shift; set_visibility "$@" ;;
   session-id) shift; session_id "$@" ;;

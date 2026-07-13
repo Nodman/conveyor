@@ -316,3 +316,16 @@ wait_sentinel() { # $1=path — poll up to ~5s
   grep -q -- '--output-schema' "$TMP/r.run.sh"
   [ -f "$TMP/r.policy.json" ]
 }
+
+@test "preflight --escalations exec passes and caches" {
+  use_cfg
+  run bash -c "cd '$TMP' && CODEX_STUB_ESCALATION=ok $CX '$SCRIPTS/codex-exec.sh' preflight --escalations exec"
+  [ "$status" -eq 0 ]
+  run bash -c "ls '$TMP/.conveyor/canary/' | wc -l"; [ "${output// /}" = "1" ]
+}
+
+@test "preflight --escalations detects silent denial" {
+  use_cfg
+  run -3 bash -c "cd '$TMP' && CODEX_STUB_ESCALATION=denied $CX '$SCRIPTS/codex-exec.sh' preflight --escalations exec"
+  [[ "$output" == *"auto_review not active"* ]]
+}

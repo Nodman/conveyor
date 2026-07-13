@@ -2,6 +2,7 @@
 set -euo pipefail
 echo "codex $*" >> "${RUN_LOG:?}"
 if [[ "${1:-}" == "login" ]]; then echo "Logged in (mock)"; exit 0; fi
+if [[ "${1:-}" == "--version" ]]; then echo "codex-cli 0.144.1-mock"; exit 0; fi
 has_resume="" has_s="" has_json="" has_color=""
 for a in "$@"; do
   [[ "$a" == "resume" ]] && has_resume=1
@@ -38,6 +39,17 @@ for a in "$@"; do
   prev="$a"
 done
 if [[ ! -t 0 ]]; then cat >/dev/null; fi
+if [[ -n "${CODEX_STUB_ESCALATION:-}" ]]; then
+  case "$CODEX_STUB_ESCALATION" in
+    ok)
+      echo '{"type":"thread.started","thread_id":"0000-canary"}'
+      echo '{"type":"item.completed","item":{"id":"c0","type":"command_execution","command":"git commit --allow-empty -m canary","aggregated_output":"","exit_code":0,"status":"completed"}}'
+      echo '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}' ;;
+    denied)
+      echo '{"type":"item.completed","item":{"id":"c0","type":"agent_message","text":"Approval policy is currently never; refusing the privileged command."}}' ;;
+  esac
+  exit 0
+fi
 if [[ -n "${MOCK_CODEX_FAIL:-}" ]]; then
   echo "Not inside a trusted directory and --skip-git-repo-check was not specified."
   exit "$MOCK_CODEX_FAIL"
