@@ -10,7 +10,8 @@ usage() {
     echo "       codex-exec.sh detect"
     echo "       codex-exec.sh set-visibility <window|background>"
     echo "       codex-exec.sh session-id <log>"
-    echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--visibility <mode>] [--sandbox read-only|workspace-write] [--workdir <dir>]"
+    echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--visibility <mode>] [--sandbox read-only|workspace-write|danger-full-access] [--workdir <dir>] [--output-schema <f>]"
+    echo "       codex-exec.sh audit <log>"
     echo "       codex-exec.sh render <log> <report> (internal: codex --json stream on stdin)"
   } >&2
   exit 2
@@ -20,6 +21,28 @@ preflight() {
   need codex
   codex login status >/dev/null 2>&1 || die_code3 "codex not authenticated — run: codex login"
   echo ok
+}
+
+audit() {
+  local log="${1:-}"
+  [[ -f "$log" ]] || die "no log file: $log"
+  local found="" line t it cmd rc
+  while IFS= read -r line; do
+    jq -e . >/dev/null 2>&1 <<<"$line" || continue
+    t="$(jq -r '.type // empty' <<<"$line" 2>/dev/null)"
+    [[ "$t" == item.completed ]] || continue
+    it="$(jq -r '.item.item_type // .item.type // empty' <<<"$line" 2>/dev/null)"
+    [[ "$it" == command_execution ]] || continue
+    cmd="$(jq -r '.item.command // empty' <<<"$line" 2>/dev/null)"
+    rc="$(jq -r '.item.exit_code // 1' <<<"$line" 2>/dev/null)"   # missing exit_code = suspect, not success
+    # substring, not prefix: codex wraps commands as `/bin/zsh -lc '<cmd>'`;
+    # `*git*commit*` catches the hardened `git -c core.hooksPath=… commit` shape too
+    case "$cmd" in
+      *"gh "*|*"curl "*|*"wget "*|*"ssh "*|*"scp "*|*"rsync "*|*"nc "*|*"git"*"push"*|*"git"*"fetch"*|*"git"*"commit"*)
+        printf '%s\t%s\n' "$rc" "$cmd"; found=1 ;;
+    esac
+  done < "$log"
+  [[ -n "$found" ]] || echo none
 }
 
 detect() {
@@ -111,6 +134,7 @@ render_stream() {
 
 run_codex() {
   local name="" model="" out="" resume="" prompt_file="" vis="" sandbox_mode="read-only" workdir="" pane=""
+  local output_schema=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --name) name="$2"; shift 2 ;;
@@ -121,16 +145,18 @@ run_codex() {
       --visibility) vis="$2"; shift 2 ;;
       --sandbox) sandbox_mode="$2"; shift 2 ;;
       --workdir) workdir="$2"; shift 2 ;;
+      --output-schema) output_schema="$2"; shift 2 ;;
       *) usage ;;
     esac
   done
   [[ -n "$name" && -n "$model" && -n "$out" && -n "$prompt_file" ]] || usage
-  case "$sandbox_mode" in read-only|workspace-write) ;; *) usage ;; esac
+  case "$sandbox_mode" in read-only|workspace-write|danger-full-access) ;; *) usage ;; esac
+  [[ -z "$output_schema" || -f "$output_schema" ]] || die "no output schema: $output_schema"
   [[ -f "$prompt_file" ]] || die "no prompt file: $prompt_file"
   [[ -z "$workdir" || -d "$workdir" ]] || die "no workdir: $workdir"
   # runner cd's to workdir, so relative --out/--prompt-file would resolve there
-  [[ -z "$workdir" || ( "$out" == /* && "$prompt_file" == /* ) ]] || die "absolute --out/--prompt-file required with --workdir"
-  case "$out$prompt_file$workdir" in *" "*) die "paths must not contain spaces" ;; esac
+  [[ -z "$workdir" || ( "$out" == /* && "$prompt_file" == /* && ( -z "$output_schema" || "$output_schema" == /* ) ) ]] || die "absolute --out/--prompt-file required with --workdir"
+  case "$out$prompt_file$workdir$output_schema" in *" "*) die "paths must not contain spaces" ;; esac
   if [[ -z "$vis" ]]; then vis="$(detect)"; fi
   if [[ "$vis" == "unset" ]]; then vis=background; fi
 
@@ -139,6 +165,8 @@ run_codex() {
   local codex_cmd="codex exec -m $model" sandbox="-s $sandbox_mode"
   # resume subcommand rejects -s; set the sandbox via config instead
   if [[ -n "$resume" ]]; then codex_cmd="codex exec resume $resume"; sandbox="-c 'sandbox_mode=\"$sandbox_mode\"'"; fi
+  local schema_flag=""
+  [[ -n "$output_schema" ]] && schema_flag="--output-schema \"$output_schema\""
   local cd_line=""
   [[ -n "$workdir" ]] && cd_line="cd $workdir || { echo 1 > $sentinel; exit 1; }"
   cat > "$runner" <<EOF
@@ -148,7 +176,7 @@ $cd_line
 printf '\e[2m--- prompt ---\n'
 cat $prompt_file
 printf -- '--------------\e[0m\n'
-$codex_cmd $sandbox --json -o $out - < $prompt_file 2>&1 | $SCRIPT_DIR/codex-exec.sh render $log $out
+$codex_cmd $sandbox $schema_flag --json -o $out - < $prompt_file 2>&1 | $SCRIPT_DIR/codex-exec.sh render $log $out
 echo "\${PIPESTATUS[0]}" > $sentinel
 EOF
   chmod +x "$runner"
@@ -180,6 +208,7 @@ case "${1:-}" in
   detect) detect ;;
   set-visibility) shift; set_visibility "$@" ;;
   session-id) shift; session_id "$@" ;;
+  audit) shift; audit "$@" ;;
   run) shift; run_codex "$@" ;;
   render) shift; render_stream "$@" ;;
   *) usage ;;

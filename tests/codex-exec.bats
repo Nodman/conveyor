@@ -286,3 +286,40 @@ wait_sentinel() { # $1=path — poll up to ~5s
   run grep -cF 'Not inside a trusted directory' "$TMP/f1.log"
   [[ "$output" == "1" ]]
 }
+
+@test "run --output-schema passthrough: fresh and resume" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/s1.md' --prompt-file '$TMP/p.txt' --output-schema '$SCRIPTS/../config/report.schema.json'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/s1.md.done"
+  grep -q -- '--output-schema' "$TMP/s1.run.sh"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/s2.md' --prompt-file '$TMP/p.txt' --resume 0000-mock-session --output-schema '$SCRIPTS/../config/report.schema.json'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/s2.md.done"
+  grep -q -- '--output-schema' "$TMP/s2.run.sh"
+}
+
+@test "run --sandbox danger-full-access: fresh -s, resume -c sandbox_mode" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/d1.md' --prompt-file '$TMP/p.txt' --sandbox danger-full-access"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/d1.md.done"
+  grep -qF -- '-s danger-full-access' "$TMP/d1.run.sh"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/d2.md' --prompt-file '$TMP/p.txt' --resume 0000-mock-session --sandbox danger-full-access"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/d2.md.done"
+  grep -qF 'sandbox_mode="danger-full-access"' "$TMP/d2.run.sh"
+  ! grep -qF -- '-s danger-full-access' "$TMP/d2.run.sh"
+}
+
+@test "audit extracts privileged commands only" {
+  use_cfg
+  run bash -c "'$SCRIPTS/codex-exec.sh' audit '$BATS_TEST_DIRNAME/fixtures/codex-escalated.log'"
+  [ "$status" -eq 0 ]
+  grep -qF 'gh api' <<<"$output"
+  grep -qF 'git push' <<<"$output"
+  grep -qF 'core.hooksPath=/dev/null commit' <<<"$output"
+  ! grep -qF 'ls -la' <<<"$output"
+}

@@ -2,22 +2,35 @@
 
 Each entry: `## YYYY-MM-DD — <topic>` followed by bullets — chose X over Y, because…
 
-## 2026-07-13 — Codex gets a typed broker, never a credential
+## 2026-07-13 — Codex runs yolo; structure, not a sandbox, is the guard
 
-- All codex GitHub/git writes go through a typed action broker
-  (`codex-actions.sh`) under the orchestrator's gh auth — chose this over a
-  repo-scoped PAT, because a prompt-injected model with any token and egress
-  can exceed API scopes, and no secret may enter model-controlled execution.
-- Codex verdicts are full review rounds (no claude re-verification); the
-  broker validates actions, not reasoning. Advisory proxying deleted — it
-  double-burned every review.
+- Codex runs unsandboxed (`danger-full-access`, exec mode) — chose this over
+  the same-day auto_review design (which had superseded the broker design),
+  user ruling. Because: the threat model is a solo developer with only
+  agent-authored PRs (no hostile diff source); on issue #63 every blocker and
+  QA failure came from the guard machinery itself, never the feature; and the
+  claude lane already runs with full shell + gh auth — the asymmetry bought
+  fix rounds, not safety.
+- Guards that remain (cheap, deterministic): per-issue worktrees; GitHub
+  branch protection on `main` (doctor warns when absent); merge/cards/
+  ready-to-merge stay orchestrator+human; review gate + QA unchanged;
+  orchestrator waits for CI checks after any push before the card advances.
+  Developer responsibility: no production credentials reachable on yolo hosts.
+- Kept from the auto_review work: `--output-schema` reports, `audit <log>`
+  post-hoc visibility, session-id resume, the live-verified codex facts in
+  docs/gotchas/codex.md. Dropped: policies, render-policy, canary, PAT/HOME
+  isolation plumbing.
+- Codex-lane pre-push judgment: codex pushes its own feature branches; the
+  review gate is the deep read. Claude-lane orchestrator pre-push check is
+  proportional (tests + stat/scope skim; deep read on suspicion) — one deep
+  read per PR, at the gate.
 - Reviewer ladder 5.6-sol → Fable → Opus, skipping the PR's material authors;
   `family` = model lineage. High-risk implementation always routes to Opus so
   the cross-provider opinion is never a self-review.
 - Ratified: 5.6 authors most code, so Fable gates most PRs by volume —
   "5.6 top reviewer" holds per-eligibility. Strongest author +
   second-strongest gate over the reverse.
-- Spec: docs/specs/2026-07-13-codex-gate-broker.md.
+- Spec: docs/specs/2026-07-13-codex-native-gate.md.
 
 ## 2026-07-12 — Model routing lives inside conveyor
 
