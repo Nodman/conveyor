@@ -112,7 +112,7 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    --add-label ready-to-merge`), then report merge-ready to the human:
    PR link + one-line summary + labels present. `ready-to-merge` is the
    orchestrator's alone — no subagent applies it. **Plain runs: a human merges — never merge.
-   Declared auto runs (your spawn prompt says so): run the Auto-merge step
+   Declared auto runs (the session declared /conveyor:auto): run the Auto-merge step
    below. Never move a card to Done in any mode.**
 6. **Commits after a QA pass invalidate it** — new commits pushed after
    `qa-passed` → remove it and `ready-to-merge` (`gh pr edit <n>
