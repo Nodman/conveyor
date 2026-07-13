@@ -1,16 +1,21 @@
 # conveyor
 
-A Claude Code plugin that turns any GitHub-connected repo into an agent-driven
-delivery pipeline. One board, one lifecycle: **brainstorm → spec → plan → TDD
-execution → PR review → QA → human merge** (or autonomous merge in a
-`/conveyor:auto` run). Install once, use in any repo — the
-per-repo footprint is config + docs, no stack code shipped.
+A Claude Code plugin that runs my delivery workflow on top of a GitHub
+Projects board. Issues go in one end, reviewed and QA'd pull requests come
+out the other:
 
-Board columns, in order:
+**brainstorm → spec → plan → TDD execution → PR review → QA → human merge**
 
-```
-Human Only · Backlog · Ready for dev · In Progress · Agent Review · QA · Done · Archived
-```
+Install it once, run `/conveyor:init` in any GitHub-connected repo. The
+per-repo footprint is a config file and some docs folders — no stack code.
+
+## Why?
+
+I wanted agents worflow with github project baord
+
+Heavily inspired by [Superpowers](https://github.com/obra/superpowers) and does not try to replace it however it is suggested to keep only one of those to skip any conflicts
+[Theo's (t3.gg)](https://t3.gg) takes on picking the right model for the job
+instead of throwing the biggest one at everything.
 
 ## Install
 
@@ -20,41 +25,71 @@ Human Only · Backlog · Ready for dev · In Progress · Agent Review · QA · D
 /conveyor:init
 ```
 
-`init` is the per-repo setup; run it once inside each repo you want on the pipeline.
+Run `init` once inside each repo you want on the pipeline.
+
+## How a task flows
+
+The board has eight columns:
+
+```
+Human Only · Backlog · Ready for dev · In Progress · Agent Review · QA · Done · Archived
+```
+
+`/conveyor:work` runs one task through the loop:
+
+1. Pick the highest-priority **Ready for dev** card, move it to **In Progress**.
+2. Read the issue and its linked docs. Unclear acceptance criteria? The card
+   goes to **Human Only** with an `**Unblock:**` comment instead of guessing.
+3. Feature-sized work with no spec gets *brainstorming* and *writing-plans*
+   first.
+4. An orchestrator spawns fresh implementer subagents per plan task (TDD),
+   judging each report against a ledger. Executors run tests and commit; they
+   never open PRs.
+5. The orchestrator pushes and opens **one** PR (`Fixes #n`, a short
+   subsystem-tagged body), then moves the card to **Agent Review**.
+6. **pr-reviewer** reviews the diff. Blocking findings go back to the owning
+   executor, which fixes and replies in the thread; then a scoped re-review.
+   Clean → `approved-by-agent`.
+7. **qa-agent** verifies the acceptance criteria on the PR branch (skipped
+   for docs-only diffs). Pass → `qa-passed`, the card waits in **QA**;
+   fail → back to In Progress.
+8. All gates passed → `ready-to-merge` on the PR and issue. **A human
+   merges.** The merge closes the issue and board automation moves the card
+   to Done. Agents never merge and never set Done by hand — unless you opt
+   into an autonomous run (below).
 
 ## What `/conveyor:init` does
 
-1. **Preflight** — checks `gh auth`, the `project` token scope, a GitHub remote,
-   and `jq`; warns if the `superpowers` plugin is still enabled (see below).
-2. **Board** — finds a linked project or creates one (`board-create.sh`), or
-   reconciles an existing project's columns to the canonical eight
-   (`board-reconcile.sh`): you interactively map each existing column to a
-   canonical state, and renames preserve item values (matched by option id).
+1. **Preflight** — checks `gh auth`, the `project` token scope, a GitHub
+   remote, and `jq`.
+2. **Board** — finds a linked project or creates one; an existing project's
+   columns get reconciled to the canonical eight. You map each old column
+   interactively, and renames keep item values.
 3. **Config** — writes `.claude/conveyor.json` (owner, repo, project number,
-   field/option ids, labels, policies) and verifies every status key resolved.
-4. **Scaffold** (`scaffold.sh`) — seeds `docs/{specs,plans,gotchas}`, the
-   `agent-task` issue template, the `approved-by-agent` / `qa-passed` /
-   `ready-to-merge` labels, and
-   a delimited conveyor block in `CLAUDE.md`.
-5. **Project skills** — generates `.claude/skills/running-the-app` and
-   `running-tests` stubs from the detected stack, leaving `<!-- FILL -->` markers
-   for you to complete.
-6. **Doctor** — runs `/conveyor:doctor` and offers to commit the scaffolding on a
-   branch as a PR.
+   field/option ids, labels, policies) and verifies every status key
+   resolved.
+4. **Scaffold** — seeds `docs/{specs,plans,gotchas}`, the `agent-task` issue
+   template, the three labels, and a delimited conveyor block in `CLAUDE.md`.
+5. **Project skills** — stubs `.claude/skills/running-the-app` and
+   `running-tests` from the detected stack, with `<!-- FILL -->` markers for
+   you to complete.
+6. **Doctor** — runs `/conveyor:doctor` and offers to commit the scaffolding
+   as a PR.
 
-## Manual board automations
+### Board automations you set by hand
 
-Three GitHub Projects workflow automations are **not** API-settable — set them by
-hand in the board UI (**Project → ⋯ → Workflows**). `init` prints this checklist:
+Three GitHub Projects workflow automations are not API-settable. `init`
+prints this checklist; set them in **Project → ⋯ → Workflows**:
 
 - ✅ Enable **"Item added to project" → Backlog**
 - ✅ Enable **"Item closed" → Done**
-- 🚫 Keep **"Pull request linked to issue"** *disabled* — enabling it re-moves
-  merged cards back to In Progress on late link events.
+- 🚫 Keep **"Pull request linked to issue"** *disabled* — it re-moves merged
+  cards back to In Progress on late link events.
 
 ## `.claude/conveyor.json`
 
-Written by `init`; every script reads it (`CONVEYOR_CONFIG` overrides the path).
+Written by `init`; every script reads it (`CONVEYOR_CONFIG` overrides the
+path).
 
 ```jsonc
 {
@@ -81,88 +116,62 @@ Written by `init`; every script reads it (`CONVEYOR_CONFIG` overrides the path).
   },
   "labels": { "approved": "approved-by-agent", "qaPassed": "qa-passed", "readyToMerge": "ready-to-merge" },
   "mergePolicy": "solo",           // merge is always the human's
-  "qaSkipPaths": ["docs/**"]       // advisory input to the orchestrator's QA
-                                   //   decision: a diff touching only these paths
-                                   //   reads as QA n/a (judgment stays primary)
+  "qaSkipPaths": ["docs/**"]       // advisory: a diff touching only these
+                                   //   paths reads as QA n/a
 }
 ```
 
-## Lifecycle
-
-The definition of *done* for one task (`/conveyor:work` runs the loop):
-
-1. Pick the highest-priority **Ready for dev** card → move it to **In Progress**.
-2. Read the issue + its linked docs. Unclear acceptance criteria → move to
-   **Human Only** and leave an `**Unblock:**` comment.
-3. Feature-sized with no spec → *brainstorming* then *writing-plans* first.
-4. The orchestrator spawns fresh implementer subagents per plan task (TDD),
-   judging each report against a durable ledger. Executors run tests and commit;
-   they **never** open PRs.
-5. Orchestrator pushes and opens **one** PR (`Fixes #n` + a ≤6-bullet
-   subsystem-tagged body) → moves the card to **Agent Review**.
-6. **pr-reviewer** reviews the diff. Blocking findings route back to the owning
-   executor, which fixes, pushes, and replies in the comment thread; then a
-   scoped re-review. Clean → `approved-by-agent`.
-7. **qa-agent** verifies the acceptance criteria on the PR branch (skipped for
-   docs-only / `qaSkipPaths` diffs). Pass → `qa-passed`, card stays in **QA**
-   as the merge-ready waiting room; fail → back to In Progress.
-8. All gates passed → the orchestrator applies `ready-to-merge` to the PR + issue
-   and reports the PR as merge-ready. **A human merges** — the merge closes
-   the issue and automation moves the card to **Done**. Agents never merge and
-   never set Done by hand. In an auto run the orchestrator merges instead — see
-   Autonomous mode.
-
 ## Autonomous mode
 
-`/conveyor:auto` drains the board without human gates, for this run only:
+`/conveyor:auto` drains the board without human gates, for that run only:
 
-- Every run opens with an explicit agreement prompt ("I agree — autonomous
-  run: …"); first run also scaffolds `scaffold.sh --grant-auto-merge`
-  (adds `Bash(gh pr merge:*)` + an autoMode rule to `.claude/settings.json`).
-- Dispatcher pattern: a fresh lead subagent per card runs the full lifecycle
-  and squash-merges once CI is green and `ready-to-merge` is applied.
-- Ready for dev empty → Backlog triage: groomed issues promoted, feature-sized
-  ones spec'd and planned with **spec-judge** / **plan-judge** approval gates
-  (2 rejections → Human Only), human-needed ones parked in Human Only.
-- Human Only is never a work source. Cards are never moved to Done by agents.
-- Brake: 3 consecutive cards without a merge → the run stops and reports.
+- Every run opens with an explicit agreement prompt. The first run also
+  grants auto-merge permissions (`Bash(gh pr merge:*)` plus an autoMode rule
+  in `.claude/settings.json`).
+- A fresh lead subagent per card runs the full lifecycle and squash-merges
+  once CI is green and `ready-to-merge` is applied.
+- Ready for dev empty → Backlog triage: groomed issues get promoted,
+  feature-sized ones get spec'd and planned with **spec-judge** /
+  **plan-judge** approval gates (2 rejections → Human Only).
+- Human Only is never a work source. Agents still never set Done by hand.
+- Brake: 3 consecutive cards without a merge stops the run.
+
+## Model routing
+
+Before spawning any subagent, the `routing` skill picks the model: classify
+the task (judgment / taste / intel / legwork / review), apply a quality
+floor, then take the cheapest model that clears it. Escalation is standing
+permission — if a cheap model's output misses the bar, redo with a smarter
+one without asking.
+
+The pool isn't Claude-only. If the codex CLI is installed and authenticated,
+codex models join the pool and `codex-exec.sh` runs them sandboxed with an
+audited log. `/conveyor:council` builds on this: multi-model deliberation on
+a hard design question — independent proposals, one rebuttal round, a merged
+verdict — then the normal spec flow.
+
+A repo can override the default pool with `.claude/routing.md`.
 
 ## Project skills contract
 
-QA is stack-agnostic, so the "how to build/run/test *this* app" knowledge lives in
-two per-repo skills that `init` stubs and you complete:
+QA is stack-agnostic, so the "how to build/run/test *this* app" knowledge
+lives in two per-repo skills that `init` stubs and you complete:
 
-- **`running-the-app`** — build + launch commands, prerequisites, how to observe
-  it running, how to read logs.
-- **`running-tests`** — the full-suite command, a single-test command,
+- **`running-the-app`** — build and launch commands, prerequisites, how to
+  observe it running, how to read logs.
+- **`running-tests`** — full-suite command, single-test command,
   prerequisites, how to read results.
 
-`qa-agent` loads these first; if they are missing or still contain `<!-- FILL -->`
-markers it reports **BLOCKED** and QA is impossible. `/conveyor:doctor` flags the
-same gap.
+`qa-agent` loads these first. Missing or still containing `<!-- FILL -->`
+markers → it reports **BLOCKED** and QA is impossible. `/conveyor:doctor`
+flags the same gap.
 
-## Replaces superpowers
+## Credits
 
-conveyor supersedes the `superpowers` plugin — run one or the other, not both.
-Superpowers' durable cores (brainstorm flow, plan format, the TDD + per-task
-review loop, systematic debugging, gotchas) are kept here in lean form; its
-multi-harness scaffolding and anti-rationalization guardrails are dropped. `init`
-and `doctor` detect an enabled superpowers plugin and warn you to disable it.
-
-## Development
-
-```
-bats tests                                                  # unit + fixture suite
-shellcheck plugin/scripts/*.sh plugin/hooks/*.sh tests/helpers/bin/gh tests/live-smoke.sh
-RUN_LIVE=1 tests/live-smoke.sh                              # real-gh end-to-end
-```
-
-`tests/` replays `gh` through a fixture stub (`tests/helpers/bin/gh`), so the bats
-suite never touches the network. `live-smoke.sh` is the exception: with
-`RUN_LIVE=1` it creates a throwaway private repo + project, runs the full
-board/scaffold/doctor path against them, and tears them down (it prints a manual
-cleanup command if the token lacks the `delete_repo` scope). Without `RUN_LIVE=1`
-it prints `skipped` and exits 0. CI runs shellcheck + bats on every push.
+- [Superpowers](https://github.com/obra/superpowers) by Jesse Vincent — the
+  brainstorm flow, plan format, TDD-with-review loop, systematic debugging,
+  and gotchas all trace back to it.
+- [Theo (t3.gg)](https://t3.gg) — the cost-aware model routing idea.
 
 ## License
 
