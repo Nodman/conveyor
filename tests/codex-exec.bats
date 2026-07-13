@@ -337,3 +337,15 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [[ "$output" == *"gh api"* ]]
   [[ "$output" != *"ls -la"* ]]
 }
+
+@test "run --role review with codexPatService isolates gh auth" {
+  use_cfg
+  jq '.externalAgents.codexPatService = "conveyor-codex"' "$TMP/.claude/conveyor.json" > "$TMP/c.json"
+  mv "$TMP/c.json" "$TMP/.claude/conveyor.json"
+  echo hi > "$TMP/p.md"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-x --model m \
+    --sandbox workspace-write --workdir '$TMP' --role review --pr 1 --issue 1 \
+    --out '$TMP/r.md' --prompt-file '$TMP/p.md' --visibility background"
+  grep -q 'GH_TOKEN=' "$TMP/r.run.sh"
+  grep -q 'GH_CONFIG_DIR=' "$TMP/r.run.sh"
+}

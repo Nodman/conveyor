@@ -241,12 +241,19 @@ run_codex() {
     role_flags="--strict-config -c 'approval_policy=\"on-request\"' -c 'approvals_reviewer=\"auto_review\"' -c \"auto_review.policy=\$(cat $policy_json)\""
   fi
   [[ -n "$output_schema" ]] && schema_flag="--output-schema $output_schema"
+  local pat_svc; pat_svc="$(cfg_or '.externalAgents.codexPatService' '')"
+  local env_line=""
+  if [[ -n "$pat_svc" ]]; then
+    # security lookup runs at run time; \$( ) stays literal in the runner
+    env_line="export GH_TOKEN=\"\$(security find-generic-password -s $pat_svc -w)\" GH_CONFIG_DIR=${out%.md}.ghcfg"
+  fi
   local cd_line=""
   [[ -n "$workdir" ]] && cd_line="cd $workdir || { echo 1 > $sentinel; exit 1; }"
   cat > "$runner" <<EOF
 #!/usr/bin/env bash
 echo "=== $name ==="
 $cd_line
+$env_line
 printf '\e[2m--- prompt ---\n'
 cat $prompt_file
 printf -- '--------------\e[0m\n'
