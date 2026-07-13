@@ -82,7 +82,19 @@ preflight_escalations() {
   if grep -qF 'Approval policy is currently never' "$out"; then
     die_code3 "canary $role: auto_review not active (misconfig) — escalations denied; fix approval_policy/approvals_reviewer or use the advisory fallback"
   fi
-  grep -q '"command_execution"' "$out" || die_code3 "canary $role: auto_review not active — no escalated command executed"
+  # PASS = the role's privileged command ran AND succeeded; a denied escalation
+  # still executes the command but it fails (network/.git blocked), so exit 0 is the real signal
+  local pat="gh "; [[ "$role" == exec ]] && pat="git commit"
+  local passed="" line c rc
+  while IFS= read -r line; do
+    jq -e . >/dev/null 2>&1 <<<"$line" || continue
+    [[ "$(jq -r '.type // empty' <<<"$line" 2>/dev/null)" == item.completed ]] || continue
+    [[ "$(jq -r '.item.item_type // .item.type // empty' <<<"$line" 2>/dev/null)" == command_execution ]] || continue
+    c="$(jq -r '.item.command // empty' <<<"$line" 2>/dev/null)"
+    rc="$(jq -r '.item.exit_code // 1' <<<"$line" 2>/dev/null)"
+    [[ "$c" == *"$pat"* && "$rc" == 0 ]] && { passed=1; break; }
+  done < "$out"
+  [[ -n "$passed" ]] || die_code3 "canary $role: auto_review not active — escalated command did not execute successfully"
   mkdir -p "$cache_dir"
   : > "$cache_dir/$role.$ver.$sha"
   echo ok
@@ -100,8 +112,9 @@ audit() {
     [[ "$it" == command_execution ]] || continue
     cmd="$(jq -r '.item.command // empty' <<<"$line" 2>/dev/null)"
     rc="$(jq -r '.item.exit_code // 0' <<<"$line" 2>/dev/null)"
+    # substring, not prefix: codex wraps commands as `/bin/zsh -lc '<cmd>'`
     case "$cmd" in
-      "gh "*|"curl "*|"wget "*|"nc "*|"ssh "*|*"git commit"*)
+      *"gh "*|*"curl "*|*"wget "*|*"nc "*|*"ssh "*|*"git commit"*)
         printf '%s\t%s\n' "$rc" "$cmd"; found=1 ;;
     esac
   done < "$log"
