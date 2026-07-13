@@ -10,7 +10,7 @@ Sources: `user ruling 2026-07-12 · DeepSWE v1.1 leaderboard 2026-07-09 (113 tas
 | claude-fable-5 | Agent tool | 9 | 9 | 9 | native 10 | director; judgment floor |
 | claude-opus-4-8 | Agent tool | 8 | 8 | 8 | native 10 | harness/repo-law implementer |
 | claude-sonnet-5 | Agent tool | 6 | 7 | 7 | native 10 | legwork |
-| codex-gpt-5.6-sol | codex CLI | 8 | 8 | 9 | external 5 | DeepSWE ≈ fable at code; quota-gated |
+| codex-gpt-5.6-sol | codex CLI | 8 | 8 | 9 | external 5 | DeepSWE ≈ fable at code; full access, no mid-run steering; quota-gated |
 
 ## Benchmark note
 
@@ -27,9 +27,9 @@ sonnet-5 ~48-54%. Re-calibrate when a shared repo task suite exists.
 
 - **Agent tool** — permissions, in-band result, SendMessage resume, visible
   in token budgets.
-- **codex CLI** — file report + log + sentinel-carries-exit-code, session-id
-  resume only, no mid-run steering, INVISIBLE to harness token budgets (track
-  separately), parallel writes need worktree isolation.
+- **codex CLI** — full access (`danger-full-access`); no mid-run steering;
+  file report + log + sentinel-carries-exit-code; session-id resume only;
+  audit post-hoc; INVISIBLE to harness token budgets (track separately).
 
 ## Availability
 

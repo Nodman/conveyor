@@ -42,9 +42,13 @@ Reference implementation: conveyor's `plugin/scripts/codex-exec.sh`. A
 compatible runner MUST provide:
 
 - Fresh run: sandbox via `-s <mode>`. Resume: `codex exec resume <sid>`
-  REJECTS `-s` — pass `-c 'sandbox_mode="<mode>"'` instead.
+  REJECTS `-s` — pass `-c 'sandbox_mode="<mode>"'` instead. Trusted-repo lanes
+  run `danger-full-access` (resume: `-c 'sandbox_mode="danger-full-access"'`).
 - Report file (the deliverable) + log file + sentinel file whose content
   carries the exit code, touched after exit in every visibility mode.
+- Standard report shape: `--output-schema plugin/config/report.schema.json`
+  (fields: verdict, privileged_actions, denials, commit_shas, tests).
+- Post-run check: `audit <log>` lists the run's privileged commands.
 - Session-id capture from the run header (for resume; never `--last`).
 - Explicit timeout + background poll on the sentinel.
 - Model-agnostic `-m <model>` (excluded models stay summonable ad hoc, e.g.

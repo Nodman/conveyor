@@ -47,20 +47,20 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    PRs.
 
    Codex lane (route = codex): spawn via `${CLAUDE_PLUGIN_ROOT}/scripts/codex-exec.sh
-   run --sandbox workspace-write --workdir <issue worktree> --name
-   codex-<model>--<issue>-<n> --model <model> --out <report> --prompt-file
-   <f>`; the prompt file carries the task text verbatim, output bar, report
-   contract, comment-prefix rule, and style rule. Wait on the sentinel
-   (explicit timeout + poll). Codex edits files and runs LOCAL tests in the
-   worktree — it CANNOT commit, push, or reach the network (protected `.git`,
-   no DNS; docs/gotchas/codex.md workspace-write live results). After the
-   sentinel: the orchestrator judges the diff, reruns the tests when codex
-   couldn't, and commits under its own identity. Fix rounds resume by session
-   id (`codex-exec.sh session-id <log>`), one targeted repair max, then
-   escalate per routing. One write-mode codex per worktree at a time. Codex
-   missing/throttled → routing fallback (Opus) + ledger note. Tests needing
-   network can't run in the sandbox → the diff is unverified until the
-   orchestrator runs them.
+   run --sandbox danger-full-access --workdir <issue worktree> --name
+   codex-<model>--<issue>-<n> --model <model> --out <report> --output-schema
+   ${CLAUDE_PLUGIN_ROOT}/config/report.schema.json --prompt-file <f>`; the
+   prompt file carries the task text verbatim, output bar, report contract,
+   comment-prefix rule, and style rule. Codex runs full-access in its own
+   dedicated per-issue worktree (never a shared checkout): it edits, runs ANY
+   tests, commits with author `<agent-name> <codex@conveyor.invalid>` plus
+   `Conveyor-Model:` / `Conveyor-Session:` trailers, and pushes its own feature
+   branch. Sentinel wait: poll ~15s; at ~15 min check liveness (log growth /
+   visibility pane) — kill and resume by session id
+   (`codex-exec.sh session-id <log>`) only on a dead log. Fix rounds resume by
+   session id, one targeted repair max, then escalate per routing. One
+   write-mode codex per worktree at a time. Codex missing/throttled → routing
+   fallback (Opus) + ledger note.
 2. Judge the report. Ambiguous or load-bearing claims → spot-check yourself
    (run the tests, read the diff). Two failures on the same task → take it
    over inline.
@@ -68,26 +68,28 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
 
 ## Ship
 
-1. Push; open ONE PR: title = task, body = `Fixes #<issue>` + ≤6-bullet
-   subsystem-tagged summary (first line a bold subsystem tag). The PR body
-   becomes the squash commit — write it for the git log.
-2. `card.sh move <issue> agentReview`. Spawn **pr-reviewer** (never with a
-   cheaper model override). Routing may add an ADVISORY cross-family pass —
-   claude-authored code-heavy diff → codex read-only review
-   (`--sandbox read-only`) into a findings file; hand the file to pr-reviewer,
-   which verifies each finding and does all posting. Codex-authored PRs →
-   claude gate alone. Advisory findings never post directly. Round 1 = full
-   charter; re-reviews = scoped to the fixes + their comment threads (say so
-   in the prompt).
-3. Blocking findings: route each to the executor that wrote it (resume by
-   name), with path:line + comment id. Executor fixes, pushes, replies in the
-   finding's thread with the fix sha. Codex-authored finding → the
-   orchestrator resumes the codex session by id with the finding (path:line +
-   defect); codex fixes in the worktree; the orchestrator reruns tests as
-   needed, commits, pushes, and replies in the finding's thread with the fix
-   sha under its own name. Card back to agentReview; route the
-   re-review to the SAME reviewer (resume by name — it keeps round-1
-   context); spawn fresh with the scoped prompt only if it's gone.
+1. Claude lane: before pushing, judge proportionally — rerun the load-bearing
+   tests and skim the diff stat/scope; deep-read only on suspicion (the review
+   gate is the one deep read per PR). Then push. Codex lane: codex already
+   pushed its own branch. Open ONE PR: title = task, body = `Fixes #<issue>` +
+   ≤6-bullet subsystem-tagged summary (first line a bold subsystem tag). The PR
+   body becomes the squash commit — write it for the git log. After ANY push
+   (any lane), wait for CI before the card advances: `gh pr checks <n> --watch`;
+   red checks → treat as a blocking finding, route to the executor.
+2. `card.sh move <issue> agentReview`. Spawn the review gate per routing (never
+   a cheaper model override; never the PR's sole-author family). A claude gate
+   runs **pr-reviewer**; a codex gate runs via `codex-exec.sh run` and posts its
+   own review + labels directly under its `**[<agent-name>]**` prefix. Round 1 =
+   full charter; re-reviews = scoped to the fixes + their comment threads (say
+   so in the prompt).
+3. Blocking findings: route each to the executor that wrote it (resume by name
+   / codex session id), with path:line + comment id. The executor fixes, runs
+   tests, commits, pushes, and replies in the finding's thread with the fix sha
+   under its own name (codex resumes by session id and fixes/pushes in its
+   worktree). After any push, wait for CI (`gh pr checks <n> --watch`). Card
+   back to agentReview; route the re-review to the SAME reviewer (resume by
+   name — it keeps round-1 context); spawn fresh with the scoped prompt only if
+   it's gone.
 4. Approved → decide QA applicability (your judgment is primary): diff has a
    runtime surface → `card.sh move <issue> qa`, spawn **qa-agent** (PR + issue
    numbers). No runtime surface (docs-only; pure refactor with test coverage;
