@@ -38,7 +38,7 @@ audit() {
     # substring, not prefix: codex wraps commands as `/bin/zsh -lc '<cmd>'`;
     # `*git*commit*` catches the hardened `git -c core.hooksPath=… commit` shape too
     case "$cmd" in
-      *"gh "*|*"curl "*|*"wget "*|*"ssh "*|*"scp "*|*"rsync "*|*"nc "*|*"git push"*|*"git fetch"*|*"git"*"commit"*)
+      *"gh "*|*"curl "*|*"wget "*|*"ssh "*|*"scp "*|*"rsync "*|*"nc "*|*"git"*"push"*|*"git"*"fetch"*|*"git"*"commit"*)
         printf '%s\t%s\n' "$rc" "$cmd"; found=1 ;;
     esac
   done < "$log"
@@ -155,7 +155,7 @@ run_codex() {
   [[ -f "$prompt_file" ]] || die "no prompt file: $prompt_file"
   [[ -z "$workdir" || -d "$workdir" ]] || die "no workdir: $workdir"
   # runner cd's to workdir, so relative --out/--prompt-file would resolve there
-  [[ -z "$workdir" || ( "$out" == /* && "$prompt_file" == /* ) ]] || die "absolute --out/--prompt-file required with --workdir"
+  [[ -z "$workdir" || ( "$out" == /* && "$prompt_file" == /* && ( -z "$output_schema" || "$output_schema" == /* ) ) ]] || die "absolute --out/--prompt-file required with --workdir"
   case "$out$prompt_file$workdir$output_schema" in *" "*) die "paths must not contain spaces" ;; esac
   if [[ -z "$vis" ]]; then vis="$(detect)"; fi
   if [[ "$vis" == "unset" ]]; then vis=background; fi

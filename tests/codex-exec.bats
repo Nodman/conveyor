@@ -306,21 +306,20 @@ wait_sentinel() { # $1=path — poll up to ~5s
   run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/d1.md' --prompt-file '$TMP/p.txt' --sandbox danger-full-access"
   [ "$status" -eq 0 ]
   wait_sentinel "$TMP/d1.md.done"
-  run cat "$TMP/d1.run.sh"
-  [[ "$output" == *"-s danger-full-access"* ]]
+  grep -qF -- '-s danger-full-access' "$TMP/d1.run.sh"
   run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/d2.md' --prompt-file '$TMP/p.txt' --resume 0000-mock-session --sandbox danger-full-access"
   [ "$status" -eq 0 ]
   wait_sentinel "$TMP/d2.md.done"
-  run cat "$TMP/d2.run.sh"
-  [[ "$output" == *'sandbox_mode="danger-full-access"'* && "$output" != *'-s danger-full-access'* ]]
+  grep -qF 'sandbox_mode="danger-full-access"' "$TMP/d2.run.sh"
+  ! grep -qF -- '-s danger-full-access' "$TMP/d2.run.sh"
 }
 
 @test "audit extracts privileged commands only" {
   use_cfg
   run bash -c "'$SCRIPTS/codex-exec.sh' audit '$BATS_TEST_DIRNAME/fixtures/codex-escalated.log'"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"gh api"* ]]
-  [[ "$output" == *"git push"* ]]
-  [[ "$output" == *"core.hooksPath=/dev/null commit"* ]]
-  [[ "$output" != *"ls -la"* ]]
+  grep -qF 'gh api' <<<"$output"
+  grep -qF 'git push' <<<"$output"
+  grep -qF 'core.hooksPath=/dev/null commit' <<<"$output"
+  ! grep -qF 'ls -la' <<<"$output"
 }
