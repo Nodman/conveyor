@@ -46,22 +46,28 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    `model:` explicitly. Claude executors run tests and commit; they never open
    PRs.
 
-   Codex lane (route = codex): spawn via `${CLAUDE_PLUGIN_ROOT}/scripts/codex-exec.sh
+   Codex lane (route = codex): first run
+   `${CLAUDE_PLUGIN_ROOT}/scripts/link-agent-skills.sh` from the worktree
+   root — codex resolves `.agents/skills` per root, and a worktree is its
+   own root; without this codex can't see the TDD or project skills. Spawn
+   via `${CLAUDE_PLUGIN_ROOT}/scripts/codex-exec.sh
    run --sandbox danger-full-access --workdir <issue worktree> --name
    codex-<model>--<issue>-<n> --model <model> --out <report> --output-schema
    ${CLAUDE_PLUGIN_ROOT}/config/report.schema.json --prompt-file <f>`; the
    prompt file carries the task text verbatim, output bar, report contract,
-   comment-prefix rule, style rule, and the commit-identity rule (commit with
+   comment-prefix rule, style rule, the instruction to follow the
+   `test-driven-development` skill (TDD is mandatory for codex the same as
+   for claude executors), and the commit-identity rule (commit with
    `git -c user.name=<agent-name> -c user.email=codex@conveyor.invalid commit`
    plus `Conveyor-Model: <model>` and `Conveyor-Session: <session-id>`
    trailers). Codex runs full-access in its own dedicated per-issue worktree
    (never a shared checkout): it edits, runs ANY tests, commits under that
-   identity, and pushes its own feature branch. Sentinel wait: poll ~15s; at ~15 min check liveness (log growth /
-   visibility pane) — kill and resume by session id
-   (`codex-exec.sh session-id <log>`) only on a dead log. Fix rounds resume by
-   session id, one targeted repair max, then escalate per routing. One
-   write-mode codex per worktree at a time. Codex missing/throttled → routing
-   fallback (Opus) + ledger note.
+   identity, and pushes its own feature branch. Sentinel wait: poll ~15s; at
+   ~15 min check liveness (log growth / visibility pane) — kill and resume by
+   session id (`codex-exec.sh session-id <log>`) only on a dead log. Fix
+   rounds resume by session id, one targeted repair max, then escalate per
+   routing. One write-mode codex per worktree at a time. Codex
+   missing/throttled → routing fallback (Opus) + ledger note.
 2. Judge the report. Ambiguous or load-bearing claims → spot-check yourself
    (run the tests, read the diff). Two failures on the same task → take it
    over inline.

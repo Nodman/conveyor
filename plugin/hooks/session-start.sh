@@ -18,7 +18,7 @@ Conveyor working principles:
 
 Process gate: a human work request starts with /conveyor:brainstorming (scale it to the task — a trivial fix needs one question, not twenty). Never implement before an approved spec for feature-sized work.
 
-If .claude/conveyor.json exists: this repo runs the conveyor board lifecycle — see the Conveyor section of CLAUDE.md; /conveyor:work to pick up tasks, /conveyor:doctor when a card looks wrong.
+If .claude/conveyor.json exists: this repo runs the conveyor board lifecycle — see the Conveyor section of CLAUDE.md; /conveyor:work to pick up tasks. Run /conveyor:doctor once before the first conveyor activity of a session (work, brainstorming, council, auto), and again when a card looks wrong.
 EOF
 
 if [[ -f .claude/conveyor.json ]]; then

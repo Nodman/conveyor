@@ -8,7 +8,8 @@
     ]
   },
   "enabledPlugins": {
-    "superpowers@claude-plugins-official": false
+    "superpowers@claude-plugins-official": false,
+    "conveyor@conveyor-marketplace": true
   },
   "autoMode": {
     "allow": [

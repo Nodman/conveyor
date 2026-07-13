@@ -1,26 +1,19 @@
 # Model pool
 
 Scores 1-10, higher better.
-Sources: `user ruling 2026-07-12 · DeepSWE v1.1 leaderboard 2026-07-09 (113 tasks) · practitioner table (video, lacks 5.6)`.
 
 ## Pool
 
-| model | runner | intel | taste | code | control | notes |
+| model | runner | intel | taste | cost | control | notes |
 |---|---|---|---|---|---|---|
-| claude-fable-5 | Agent tool | 9 | 9 | 9 | native 10 | director; judgment floor |
-| claude-opus-4-8 | Agent tool | 8 | 8 | 8 | native 10 | harness/repo-law implementer |
-| claude-sonnet-5 | Agent tool | 6 | 7 | 7 | native 10 | legwork |
-| codex-gpt-5.6-sol | codex CLI | 8 | 8 | 9 | external 5 | DeepSWE ≈ fable at code; full access, no mid-run steering; quota-gated |
-
-## Benchmark note
-
-DeepSWE v1.1 — 5.6-sol peaks ~73% vs fable-5 ~70%, opus-4-8 ~52-60%,
-sonnet-5 ~48-54%. Re-calibrate when a shared repo task suite exists.
+| claude-fable-5 | Agent tool | 9 | 9 | 2 | native 10 | director; judgment floor |
+| claude-opus-4-8 | Agent tool | 7 | 8 | 4 | native 10 | harness/repo-law implementer |
+| claude-sonnet-5 | Agent tool | 5 | 6 | 5 | native 10 | legwork, fetch docs, etc |
+| codex-gpt-5.6-sol | codex CLI | 8 | 8 | 6 | external 5 | ≈ fable at code but cheaper |
+| codex-gpt-5.5 | codex CLI | 7 | 5 | 7 | external 5 | ≈ opus 4.8 at code but cheaper |
 
 ## Excluded rows
 
-- **gpt-5.5** — same price class, weaker, worst credit burn. Re-entry =
-  measured ≥30% cheaper end-to-end at same pass+repair rate.
 - **haiku** — user-banned.
 
 ## Friction/control
