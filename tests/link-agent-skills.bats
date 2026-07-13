@@ -40,8 +40,8 @@ seed_tree() {
   seed_tree
   run bash -c "cd '$TMP' && '$SCRIPTS/link-agent-skills.sh' check"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"DRIFT: .agents/skills/test-driven-development"* ]]
-  [[ "$output" == *"DRIFT: .agents/ not gitignored"* ]]
+  grep -qF 'DRIFT: .agents/skills/test-driven-development' <<<"$output"
+  grep -qF 'DRIFT: .agents/ not gitignored' <<<"$output"
   [ ! -e "$TMP/.agents" ]
   ! grep -qxF '.agents/' "$TMP/.gitignore"
 }
