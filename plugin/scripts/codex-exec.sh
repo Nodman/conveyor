@@ -6,14 +6,43 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
   {
-    echo "usage: codex-exec.sh preflight"
+    echo "usage: codex-exec.sh preflight [--escalations <exec|review>]"
     echo "       codex-exec.sh detect"
     echo "       codex-exec.sh set-visibility <window|background>"
     echo "       codex-exec.sh session-id <log>"
-    echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--visibility <mode>] [--sandbox read-only|workspace-write] [--workdir <dir>]"
+    echo "       codex-exec.sh render-policy <exec|review> --name <n> --workdir <d> [--pr <n> --issue <n>]"
+    echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--visibility <mode>] [--sandbox read-only|workspace-write] [--workdir <dir>] [--role exec|review --pr <n> --issue <n>] [--output-schema <f>]"
+    echo "       codex-exec.sh audit <log>"
     echo "       codex-exec.sh render <log> <report> (internal: codex --json stream on stdin)"
   } >&2
   exit 2
+}
+
+render_policy() {
+  local role="${1:-}"; shift 2>/dev/null || true
+  case "$role" in exec|review) ;; *) usage ;; esac
+  local name="" workdir="" pr="" issue=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --name) name="$2"; shift 2 ;;
+      --workdir) workdir="$2"; shift 2 ;;
+      --pr) pr="$2"; shift 2 ;;
+      --issue) issue="$2"; shift 2 ;;
+      *) usage ;;
+    esac
+  done
+  local tpl="$SCRIPT_DIR/../config/codex-policies/$role.policy.txt"
+  [[ -f "$tpl" ]] || die "no policy template: $tpl"
+  [[ -n "$name" && -n "$workdir" ]] || usage
+  [[ "$role" == exec || ( -n "$pr" && -n "$issue" ) ]] || usage
+  local out
+  out="$(sed -e "s|AGENT_NAME|$name|g" -e "s|WORKTREE|$workdir|g" \
+    -e "s|PR_NUMBER|$pr|g" -e "s|ISSUE_NUMBER|$issue|g" \
+    -e "s|OWNER|$(cfg .owner)|g" -e "s|REPO|$(cfg .repo)|g" \
+    -e "s|LABEL_APPROVED|$(cfg '.labels.approved')|g" "$tpl")"
+  grep -qE '(AGENT_NAME|OWNER|REPO|PR_NUMBER|ISSUE_NUMBER|WORKTREE|LABEL_APPROVED)' <<<"$out" \
+    && die "render-policy: unfilled placeholder in $role policy"
+  printf '%s\n' "$out"
 }
 
 preflight() {
@@ -180,6 +209,7 @@ case "${1:-}" in
   detect) detect ;;
   set-visibility) shift; set_visibility "$@" ;;
   session-id) shift; session_id "$@" ;;
+  render-policy) shift; render_policy "$@" ;;
   run) shift; run_codex "$@" ;;
   render) shift; render_stream "$@" ;;
   *) usage ;;

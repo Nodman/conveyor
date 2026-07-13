@@ -286,3 +286,18 @@ wait_sentinel() { # $1=path — poll up to ~5s
   run grep -cF 'Not inside a trusted directory' "$TMP/f1.log"
   [[ "$output" == "1" ]]
 }
+
+@test "render-policy: review fills every placeholder" {
+  use_cfg
+  run bash -c "cd '$TMP' && '$SCRIPTS/codex-exec.sh' render-policy review \
+    --name codex-gpt-5.6-sol--12-1 --pr 12 --issue 7 --workdir '$TMP'"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"codex-gpt-5.6-sol--12-1"* ]]
+  run grep -cE '(AGENT_NAME|OWNER|REPO|PR_NUMBER|ISSUE_NUMBER|WORKTREE|LABEL_APPROVED)' <<<"$output"
+  [ "$output" = "0" ]
+}
+
+@test "render-policy: review without --pr dies" {
+  use_cfg
+  run -2 bash -c "cd '$TMP' && '$SCRIPTS/codex-exec.sh' render-policy review --name x --workdir '$TMP'"
+}
