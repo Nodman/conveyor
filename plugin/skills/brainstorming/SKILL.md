@@ -9,8 +9,6 @@ Hard gate: no implementation, scaffolding, or code before the user approves a
 design. Scale the process, not the gate: a trivial fix needs one clarifying
 question and a two-sentence design; a feature needs the full flow.
 
-0. **Doctor.** In a conveyor repo (`.claude/conveyor.json` exists), run
-   /conveyor:doctor first if it hasn't run this session.
 1. **Context.** Read the relevant code/docs first (delegate exploration for
    anything over a few files). Check docs/DECISIONS.md and docs/gotchas/.
 2. **Questions — one at a time.** Prefer multiple-choice (AskUserQuestion).
