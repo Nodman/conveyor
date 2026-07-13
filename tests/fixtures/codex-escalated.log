@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"0000-audit"}
+{"type":"item.completed","item":{"id":"a0","type":"command_execution","command":"gh api repos/acme/widget/pulls/12","aggregated_output":"{}","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"a1","type":"command_execution","command":"ls -la","aggregated_output":"total 0","exit_code":0,"status":"completed"}}
+{"type":"turn.completed","usage":{"input_tokens":9,"output_tokens":3}}

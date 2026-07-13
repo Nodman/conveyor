@@ -88,6 +88,26 @@ preflight_escalations() {
   echo ok
 }
 
+audit() {
+  local log="${1:-}"
+  [[ -f "$log" ]] || die "no log file: $log"
+  local found="" line t it cmd rc
+  while IFS= read -r line; do
+    jq -e . >/dev/null 2>&1 <<<"$line" || continue
+    t="$(jq -r '.type // empty' <<<"$line" 2>/dev/null)"
+    [[ "$t" == item.completed ]] || continue
+    it="$(jq -r '.item.item_type // .item.type // empty' <<<"$line" 2>/dev/null)"
+    [[ "$it" == command_execution ]] || continue
+    cmd="$(jq -r '.item.command // empty' <<<"$line" 2>/dev/null)"
+    rc="$(jq -r '.item.exit_code // 0' <<<"$line" 2>/dev/null)"
+    case "$cmd" in
+      "gh "*|"curl "*|"wget "*|"nc "*|"ssh "*|*"git commit"*)
+        printf '%s\t%s\n' "$rc" "$cmd"; found=1 ;;
+    esac
+  done < "$log"
+  [[ -n "$found" ]] || echo none
+}
+
 detect() {
   if [[ -n "${TMUX:-}" ]]; then echo tmux
   elif [[ "${LC_TERMINAL:-}" == "iTerm2" || "${TERM_PROGRAM:-}" == "iTerm.app" ]]; then echo iterm
@@ -265,6 +285,7 @@ case "${1:-}" in
   set-visibility) shift; set_visibility "$@" ;;
   session-id) shift; session_id "$@" ;;
   render-policy) shift; render_policy "$@" ;;
+  audit) shift; audit "$@" ;;
   run) shift; run_codex "$@" ;;
   render) shift; render_stream "$@" ;;
   *) usage ;;

@@ -329,3 +329,11 @@ wait_sentinel() { # $1=path — poll up to ~5s
   run -3 bash -c "cd '$TMP' && CODEX_STUB_ESCALATION=denied $CX '$SCRIPTS/codex-exec.sh' preflight --escalations exec"
   [[ "$output" == *"auto_review not active"* ]]
 }
+
+@test "audit extracts privileged commands only" {
+  use_cfg
+  run bash -c "'$SCRIPTS/codex-exec.sh' audit '$BATS_TEST_DIRNAME/fixtures/codex-escalated.log'"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"gh api"* ]]
+  [[ "$output" != *"ls -la"* ]]
+}
