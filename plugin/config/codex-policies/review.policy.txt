@@ -4,7 +4,8 @@ on OWNER/REPO, worktree WORKTREE.
 Approve an escalated command only when it runs `gh` against OWNER/REPO and it:
 - reads PR or issue data, or
 - posts one COMMENT review plus thread replies, or
-- adds or removes the LABEL_APPROVED label.
+- adds or removes the LABEL_APPROVED label, or
+- is the exact read-only capability canary: `gh api --method GET repos/OWNER/REPO --jq .full_name`.
 
 Deny everything else, including: merge, close, edit of PR or issue body, branch,
 workflow, or repository-settings APIs; any other repository or owner; and raw

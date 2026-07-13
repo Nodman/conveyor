@@ -329,11 +329,23 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [[ "$output" == *"auto_review not active"* ]]
 }
 
+@test "preflight --escalations second run hits cache, skips codex exec" {
+  use_cfg
+  run bash -c "cd '$TMP' && CODEX_STUB_ESCALATION=ok $CX '$SCRIPTS/codex-exec.sh' preflight --escalations exec"
+  [ "$status" -eq 0 ]
+  run bash -c "cd '$TMP' && CODEX_STUB_ESCALATION=ok $CX '$SCRIPTS/codex-exec.sh' preflight --escalations exec"
+  [ "$status" -eq 0 ]
+  run grep -c 'codex exec' "$RUN_LOG"
+  [ "$output" = "1" ]
+}
+
 @test "audit extracts privileged commands only" {
   use_cfg
   run bash -c "'$SCRIPTS/codex-exec.sh' audit '$BATS_TEST_DIRNAME/fixtures/codex-escalated.log'"
   [ "$status" -eq 0 ]
   [[ "$output" == *"gh api"* ]]
+  [[ "$output" == *"git push"* ]]
+  [[ "$output" == *"core.hooksPath=/dev/null commit"* ]]
   [[ "$output" != *"ls -la"* ]]
 }
 
@@ -347,4 +359,19 @@ wait_sentinel() { # $1=path — poll up to ~5s
     --out '$TMP/r.md' --prompt-file '$TMP/p.md' --visibility background"
   grep -q 'GH_TOKEN=' "$TMP/r.run.sh"
   grep -q 'GH_CONFIG_DIR=' "$TMP/r.run.sh"
+  grep -q 'HOME=' "$TMP/r.run.sh"
+  grep -q 'shell_environment_policy.include_only' "$TMP/r.run.sh"
+  grep -qF "security find-generic-password -s 'conveyor-codex' -w" "$TMP/r.run.sh"
+}
+
+@test "run --role review rejects bogus codexPatService charset" {
+  use_cfg
+  jq '.externalAgents.codexPatService = "bad; rm -rf /"' "$TMP/.claude/conveyor.json" > "$TMP/c.json"
+  mv "$TMP/c.json" "$TMP/.claude/conveyor.json"
+  echo hi > "$TMP/p.md"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-x --model m \
+    --sandbox workspace-write --workdir '$TMP' --role review --pr 1 --issue 1 \
+    --out '$TMP/r.md' --prompt-file '$TMP/p.md' --visibility background"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"codexPatService"* ]]
 }

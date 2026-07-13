@@ -1,8 +1,14 @@
 Escalation policy for AGENT_NAME operating in worktree WORKTREE on OWNER/REPO.
 
 Approve an escalated command only when it is one of:
-- `git add` or `git commit` of exact paths inside WORKTREE.
+- `git add` of exact paths inside WORKTREE.
+- A hardened commit of exactly this shape: `git -c core.hooksPath=/dev/null commit
+  --no-verify --no-gpg-sign` with author `AGENT_NAME <codex@conveyor.invalid>` and
+  both `Conveyor-Model:` and `Conveyor-Session:` trailers. Deny a bare `git commit`.
 - A test command bound to loopback (localhost / 127.0.0.1) only.
+- The exact hardened-commit canary: `git -c core.hooksPath=/dev/null commit
+  --allow-empty --no-verify --no-gpg-sign --author="AGENT_NAME <codex@conveyor.invalid>"
+  -m conveyor-canary`.
 
 Deny everything else, including: push, remotes, any network beyond loopback,
 git hooks, global or system git config, and any path outside WORKTREE.

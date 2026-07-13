@@ -40,10 +40,17 @@ for a in "$@"; do
 done
 if [[ ! -t 0 ]]; then cat >/dev/null; fi
 if [[ -n "${CODEX_STUB_ESCALATION:-}" ]]; then
+  # canary always runs in a throwaway dir → real CLI refuses without --skip-git-repo-check
+  has_skip=""
+  for a in "$@"; do [[ "$a" == "--skip-git-repo-check" ]] && has_skip=1; done
+  if [[ -z "$has_skip" ]]; then
+    echo "Not inside a trusted directory and --skip-git-repo-check was not specified." >&2
+    exit 1
+  fi
   case "$CODEX_STUB_ESCALATION" in
     ok)
       echo '{"type":"thread.started","thread_id":"0000-canary"}'
-      echo '{"type":"item.completed","item":{"id":"c0","type":"command_execution","command":"git commit --allow-empty -m canary","aggregated_output":"","exit_code":0,"status":"completed"}}'
+      echo '{"type":"item.completed","item":{"id":"c0","type":"command_execution","command":"git -c core.hooksPath=/dev/null commit --allow-empty --no-verify --no-gpg-sign -m conveyor-canary","aggregated_output":"","exit_code":0,"status":"completed"}}'
       echo '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}' ;;
     denied)
       echo '{"type":"item.completed","item":{"id":"c0","type":"agent_message","text":"Approval policy is currently never; refusing the privileged command."}}' ;;

@@ -4,9 +4,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=plugin/scripts/lib.sh
 . "$SCRIPT_DIR/lib.sh"
 
+# env codex may pass into an escalated command under an isolated PAT
+PAT_INCLUDE_ONLY='["PATH","HOME","GH_CONFIG_DIR","GH_TOKEN","LANG","LC_ALL"]'
+
+esc() { printf '%s' "${1:-}" | sed -e 's/[\\&|]/\\&/g'; }   # escape sed replacement metachars
+
+pat_exports() { # svc home cfg -> `export …` line; $(security) stays deferred, svc single-quoted
+  printf "export HOME=%q GH_CONFIG_DIR=%q GH_TOKEN=\"\$(security find-generic-password -s '%s' -w)\"" \
+    "$2" "$3" "$1"
+}
+
 usage() {
   {
-    echo "usage: codex-exec.sh preflight [--escalations <exec|review>]"
+    echo "usage: codex-exec.sh preflight [--escalations <exec|review> [--model <m>]]"
     echo "       codex-exec.sh detect"
     echo "       codex-exec.sh set-visibility <window|background>"
     echo "       codex-exec.sh session-id <log>"
@@ -36,10 +46,10 @@ render_policy() {
   [[ -n "$name" && -n "$workdir" ]] || usage
   [[ "$role" == exec || ( -n "$pr" && -n "$issue" ) ]] || usage
   local out
-  out="$(sed -e "s|AGENT_NAME|$name|g" -e "s|WORKTREE|$workdir|g" \
-    -e "s|PR_NUMBER|$pr|g" -e "s|ISSUE_NUMBER|$issue|g" \
-    -e "s|OWNER|$(cfg .owner)|g" -e "s|REPO|$(cfg .repo)|g" \
-    -e "s|LABEL_APPROVED|$(cfg '.labels.approved')|g" "$tpl")"
+  out="$(sed -e "s|AGENT_NAME|$(esc "$name")|g" -e "s|WORKTREE|$(esc "$workdir")|g" \
+    -e "s|PR_NUMBER|$(esc "$pr")|g" -e "s|ISSUE_NUMBER|$(esc "$issue")|g" \
+    -e "s|OWNER|$(esc "$(cfg .owner)")|g" -e "s|REPO|$(esc "$(cfg .repo)")|g" \
+    -e "s|LABEL_APPROVED|$(esc "$(cfg '.labels.approved')")|g" "$tpl")"
   grep -qE '(AGENT_NAME|OWNER|REPO|PR_NUMBER|ISSUE_NUMBER|WORKTREE|LABEL_APPROVED)' <<<"$out" \
     && die "render-policy: unfilled placeholder in $role policy"
   printf '%s\n' "$out"
@@ -52,39 +62,54 @@ preflight() {
 }
 
 preflight_escalations() {
-  local role="${1:-}"
+  local role="${1:-}"; shift 2>/dev/null || true
+  local model="gpt-5.6-sol"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in --model) model="$2"; shift 2 ;; *) usage ;; esac
+  done
   case "$role" in exec|review) ;; *) usage ;; esac
   need codex
-  local cache_dir="$PWD/.conveyor/canary"
+  local tpl="$SCRIPT_DIR/../config/codex-policies/$role.policy.txt"
+  [[ -f "$tpl" ]] || die "no policy template: $tpl"
+  local ver; ver="$(codex --version 2>/dev/null | tr -dc 'A-Za-z0-9.')"; [[ -n "$ver" ]] || ver="unknown"
+  # cache key = cli-version + sha of the TEMPLATE file (not the rendered text — that carries mktemp paths)
+  local tsha; tsha="$(shasum "$tpl" 2>/dev/null | awk '{print $1}')"; tsha="${tsha:0:12}"; [[ -n "$tsha" ]] || tsha="nosha"
+  local cache_dir="$PWD/.conveyor/canary" key="$role.$ver.$tsha"
+  [[ -f "$cache_dir/$key" ]] && return 0   # cached pass this session — skip the run, silently
   local scratch; scratch="$(mktemp -d)"
-  local policy
+  git init -q "$scratch" 2>/dev/null || true
+  git -C "$scratch" config user.email "codex@conveyor.invalid" 2>/dev/null || true
+  git -C "$scratch" config user.name "canary-$role" 2>/dev/null || true
+  local policy pat
   if [[ "$role" == exec ]]; then
-    git init -q "$scratch" 2>/dev/null || true
     policy="$(render_policy exec --name "canary-$role" --workdir "$scratch")"
+    pat='git -c core.hooksPath=/dev/null commit --allow-empty --no-verify --no-gpg-sign --author="canary-'"$role"' <codex@conveyor.invalid>" -m conveyor-canary'
   else
     policy="$(render_policy review --name "canary-$role" --workdir "$scratch" --pr 0 --issue 0)"
+    pat="gh api --method GET repos/$(cfg .owner)/$(cfg .repo) --jq .full_name"
   fi
-  local sha; sha="$(printf '%s' "$policy" | shasum 2>/dev/null | awk '{print $1}')"
-  sha="${sha:0:12}"; [[ -n "$sha" ]] || sha="nosha"
-  local ver; ver="$(codex --version 2>/dev/null | tr -dc 'A-Za-z0-9.')"
-  [[ -n "$ver" ]] || ver="unknown"
   local prompt="$scratch/canary-prompt.md"
-  if [[ "$role" == exec ]]; then
-    printf 'Prove escalated commits work: run this and nothing else: git commit --allow-empty -m canary\n' > "$prompt"
-  else
-    printf 'Prove escalated reads work: run this and nothing else: gh api repos/%s/%s\n' "$(cfg .owner)" "$(cfg .repo)" > "$prompt"
+  printf 'Run exactly this one command and nothing else:\n%s\n' "$pat" > "$prompt"
+  local pj; pj="$(printf '%s' "$policy" | jq -Rs .)"
+  local pat_svc; pat_svc="$(cfg_or '.externalAgents.codexPatService' '')"
+  local env_exports=""; local -a pat_args=()
+  if [[ -n "$pat_svc" ]]; then
+    [[ "$pat_svc" =~ ^[A-Za-z0-9._-]+$ ]] || die "invalid codexPatService (charset): $pat_svc"
+    mkdir -p "$scratch/home" "$scratch/ghcfg"
+    env_exports="$(pat_exports "$pat_svc" "$scratch/home" "$scratch/ghcfg")"
+    pat_args=(-c "shell_environment_policy.include_only=$PAT_INCLUDE_ONLY")
   fi
-  local out="$scratch/canary.out" pj
-  pj="$(printf '%s' "$policy" | jq -Rs .)"
-  ( cd "$scratch" && codex exec -m canary -s workspace-write \
-      -c 'approval_policy="on-request"' -c 'approvals_reviewer="auto_review"' \
-      -c "auto_review.policy=$pj" --json - < "$prompt" ) > "$out" 2>&1 || true
+  local out="$scratch/canary.out"
+  local -a cmd=(codex exec -m "$model" -s workspace-write --skip-git-repo-check
+    -c 'approval_policy="on-request"' -c 'approvals_reviewer="auto_review"'
+    -c "auto_review.policy=$pj")
+  ( cd "$scratch" && eval "$env_exports" && "${cmd[@]}" "${pat_args[@]+"${pat_args[@]}"}" \
+      --json - < "$prompt" ) > "$out" 2>&1 || true
   if grep -qF 'Approval policy is currently never' "$out"; then
     die_code3 "canary $role: auto_review not active (misconfig) — escalations denied; fix approval_policy/approvals_reviewer or use the advisory fallback"
   fi
-  # PASS = the role's privileged command ran AND succeeded; a denied escalation
+  # PASS = the role's exact canary command ran AND succeeded; a denied escalation
   # still executes the command but it fails (network/.git blocked), so exit 0 is the real signal
-  local pat="gh "; [[ "$role" == exec ]] && pat="git commit"
   local passed="" line c rc
   while IFS= read -r line; do
     jq -e . >/dev/null 2>&1 <<<"$line" || continue
@@ -92,11 +117,15 @@ preflight_escalations() {
     [[ "$(jq -r '.item.item_type // .item.type // empty' <<<"$line" 2>/dev/null)" == command_execution ]] || continue
     c="$(jq -r '.item.command // empty' <<<"$line" 2>/dev/null)"
     rc="$(jq -r '.item.exit_code // 1' <<<"$line" 2>/dev/null)"
-    [[ "$c" == *"$pat"* && "$rc" == 0 ]] && { passed=1; break; }
+    if [[ "$role" == exec ]]; then
+      [[ "$c" == *"git"*"commit"* && "$rc" == 0 ]] && { passed=1; break; }
+    else
+      [[ "$c" == *"gh api"* && "$rc" == 0 ]] && { passed=1; break; }
+    fi
   done < "$out"
   [[ -n "$passed" ]] || die_code3 "canary $role: auto_review not active — escalated command did not succeed. Likely: approval keys ('-c approval_policy'/'-c approvals_reviewer') not reaching codex, or a config load error. Check the log: $out"
   mkdir -p "$cache_dir"
-  : > "$cache_dir/$role.$ver.$sha"
+  : > "$cache_dir/$key"
   echo ok
 }
 
@@ -111,10 +140,11 @@ audit() {
     it="$(jq -r '.item.item_type // .item.type // empty' <<<"$line" 2>/dev/null)"
     [[ "$it" == command_execution ]] || continue
     cmd="$(jq -r '.item.command // empty' <<<"$line" 2>/dev/null)"
-    rc="$(jq -r '.item.exit_code // 0' <<<"$line" 2>/dev/null)"
-    # substring, not prefix: codex wraps commands as `/bin/zsh -lc '<cmd>'`
+    rc="$(jq -r '.item.exit_code // 1' <<<"$line" 2>/dev/null)"   # missing exit_code = suspect, not success
+    # substring, not prefix: codex wraps commands as `/bin/zsh -lc '<cmd>'`;
+    # `*git*commit*` catches the hardened `git -c core.hooksPath=… commit` shape too
     case "$cmd" in
-      *"gh "*|*"curl "*|*"wget "*|*"nc "*|*"ssh "*|*"git commit"*)
+      *"gh "*|*"curl "*|*"wget "*|*"ssh "*|*"scp "*|*"rsync "*|*"nc "*|*"git push"*|*"git fetch"*|*"git"*"commit"*)
         printf '%s\t%s\n' "$rc" "$cmd"; found=1 ;;
     esac
   done < "$log"
@@ -236,7 +266,7 @@ run_codex() {
   [[ -z "$workdir" || -d "$workdir" ]] || die "no workdir: $workdir"
   # runner cd's to workdir, so relative --out/--prompt-file would resolve there
   [[ -z "$workdir" || ( "$out" == /* && "$prompt_file" == /* ) ]] || die "absolute --out/--prompt-file required with --workdir"
-  case "$out$prompt_file$workdir" in *" "*) die "paths must not contain spaces" ;; esac
+  case "$out$prompt_file$workdir$output_schema" in *" "*) die "paths must not contain spaces" ;; esac
   if [[ -z "$vis" ]]; then vis="$(detect)"; fi
   if [[ "$vis" == "unset" ]]; then vis=background; fi
 
@@ -253,12 +283,16 @@ run_codex() {
     # \$(cat …) stays literal in the runner: policy is read at run time, no heredoc quoting fight
     role_flags="-c 'approval_policy=\"on-request\"' -c 'approvals_reviewer=\"auto_review\"' -c \"auto_review.policy=\$(cat $policy_json)\""
   fi
-  [[ -n "$output_schema" ]] && schema_flag="--output-schema $output_schema"
+  [[ -n "$output_schema" ]] && schema_flag="--output-schema \"$output_schema\""
   local pat_svc; pat_svc="$(cfg_or '.externalAgents.codexPatService' '')"
-  local env_line=""
+  local env_line="" pat_flag=""
   if [[ -n "$pat_svc" ]]; then
-    # security lookup runs at run time; \$( ) stays literal in the runner
-    env_line="export GH_TOKEN=\"\$(security find-generic-password -s $pat_svc -w)\" GH_CONFIG_DIR=${out%.md}.ghcfg"
+    [[ "$pat_svc" =~ ^[A-Za-z0-9._-]+$ ]] || die "invalid codexPatService (charset): $pat_svc"
+    local patdir="${out%.md}.pat"
+    mkdir -p "$patdir/home" "$patdir/ghcfg"
+    # isolated HOME/GH_CONFIG_DIR + repo-scoped token; security lookup stays deferred in the runner
+    env_line="$(pat_exports "$pat_svc" "$patdir/home" "$patdir/ghcfg")"
+    pat_flag="-c 'shell_environment_policy.include_only=$PAT_INCLUDE_ONLY'"
   fi
   local cd_line=""
   [[ -n "$workdir" ]] && cd_line="cd $workdir || { echo 1 > $sentinel; exit 1; }"
@@ -270,7 +304,7 @@ $env_line
 printf '\e[2m--- prompt ---\n'
 cat $prompt_file
 printf -- '--------------\e[0m\n'
-$codex_cmd $sandbox $role_flags $schema_flag --json -o $out - < $prompt_file 2>&1 | $SCRIPT_DIR/codex-exec.sh render $log $out
+$codex_cmd $sandbox $role_flags $pat_flag $schema_flag --json -o $out - < $prompt_file 2>&1 | $SCRIPT_DIR/codex-exec.sh render $log $out
 echo "\${PIPESTATUS[0]}" > $sentinel
 EOF
   chmod +x "$runner"
