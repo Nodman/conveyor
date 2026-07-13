@@ -112,4 +112,5 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
   f="$REPO/plugin/skills/doctor/SKILL.md"
   grep -qF -- 'NEVER commit' "$f"
   grep -qF -- 'rides along' "$f"
+  grep -qF -- "sed 's|^origin/||'" "$f"
 }
