@@ -138,6 +138,8 @@ path).
 
 ## Model routing
 
+**codex models currently running in a yolo mode, which is not really safe so risk is yours**
+
 Before spawning any subagent, the `routing` skill picks the model: classify
 the task (judgment / taste / intel / legwork / review), apply a quality
 floor, then take the cheapest model that clears it. Escalation is standing
