@@ -20,6 +20,10 @@ Verified against the real CLI (authed, gpt-5.6-sol) via `codex-exec.sh run --san
 - Network BLOCKED by default: `gh --version` works (local binary, v2.96.0) but `git ls-remote https://github.com/...` fails `Could not resolve host: github.com`. No push/fetch/PR from inside the sandbox.
 - Design implication: codex write-mode = edit worktree files + run local tests only. Claude commits, pushes, and (if the sandbox blocked test runs) re-verifies before Ship.
 
+> Note: the auto_review machinery below was superseded by the yolo ruling
+> (docs/DECISIONS.md, 2026-07-13 — codex runs `danger-full-access`). These
+> entries stay because the live-verified codex facts remain true and hard-won.
+
 ## auto_review escalations execute headless (codex-cli 0.144.1, 2026-07-13)
 Verified against the real CLI (authed, gpt-5.6-sol) in a throwaway git repo under `/private/tmp`, config `-s workspace-write -c approval_policy="on-request" -c approvals_reviewer="auto_review" -c auto_review.policy="<rendered template>"`.
 

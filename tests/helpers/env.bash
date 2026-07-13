@@ -9,4 +9,9 @@ setup() {
   mkdir -p "$TMP/.claude"
 }
 
-teardown() { rm -rf "$TMP"; }
+teardown() {
+  # background --visibility runners are detached (nohup); kill any still referencing
+  # this test's TMP so they can't write into it while rm -rf runs (CI teardown race)
+  [[ -n "${TMP:-}" ]] && pkill -f "$TMP" 2>/dev/null || true
+  rm -rf "$TMP"
+}

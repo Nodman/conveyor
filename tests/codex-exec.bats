@@ -287,68 +287,32 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [[ "$output" == "1" ]]
 }
 
-@test "render-policy: review fills every placeholder" {
+@test "run --output-schema passthrough: fresh and resume" {
   use_cfg
-  run bash -c "cd '$TMP' && '$SCRIPTS/codex-exec.sh' render-policy review \
-    --name codex-gpt-5.6-sol--12-1 --pr 12 --issue 7 --workdir '$TMP'"
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/s1.md' --prompt-file '$TMP/p.txt' --output-schema '$SCRIPTS/../config/report.schema.json'"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"codex-gpt-5.6-sol--12-1"* ]]
-  run grep -cE '(AGENT_NAME|OWNER|REPO|PR_NUMBER|ISSUE_NUMBER|WORKTREE|LABEL_APPROVED)' <<<"$output"
-  [ "$output" = "0" ]
+  wait_sentinel "$TMP/s1.md.done"
+  grep -q -- '--output-schema' "$TMP/s1.run.sh"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/s2.md' --prompt-file '$TMP/p.txt' --resume 0000-mock-session --output-schema '$SCRIPTS/../config/report.schema.json'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/s2.md.done"
+  grep -q -- '--output-schema' "$TMP/s2.run.sh"
 }
 
-@test "render-policy: review without --pr dies" {
+@test "run --sandbox danger-full-access: fresh -s, resume -c sandbox_mode" {
   use_cfg
-  run -2 bash -c "cd '$TMP' && '$SCRIPTS/codex-exec.sh' render-policy review --name x --workdir '$TMP'"
-}
-
-@test "run --role review writes approval config into the runner" {
-  use_cfg
-  echo hi > "$TMP/p.md"
-  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol \
-    --model gpt-5.6-sol --sandbox workspace-write --workdir '$TMP' --role review \
-    --pr 12 --issue 7 --output-schema '$SCRIPTS/../config/codex-policies/report.schema.json' \
-    --out '$TMP/r.md' --prompt-file '$TMP/p.md' --visibility background"
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/d1.md' --prompt-file '$TMP/p.txt' --sandbox danger-full-access"
   [ "$status" -eq 0 ]
-  grep -q 'approvals_reviewer="auto_review"' "$TMP/r.run.sh"
-  grep -q 'auto_review.policy=' "$TMP/r.run.sh"
-  grep -q -- '--output-schema' "$TMP/r.run.sh"
-  [ -f "$TMP/r.policy.json" ]
-}
-
-@test "preflight --escalations exec passes and caches" {
-  use_cfg
-  run bash -c "cd '$TMP' && CODEX_STUB_ESCALATION=ok $CX '$SCRIPTS/codex-exec.sh' preflight --escalations exec"
+  wait_sentinel "$TMP/d1.md.done"
+  run cat "$TMP/d1.run.sh"
+  [[ "$output" == *"-s danger-full-access"* ]]
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/d2.md' --prompt-file '$TMP/p.txt' --resume 0000-mock-session --sandbox danger-full-access"
   [ "$status" -eq 0 ]
-  run bash -c "ls '$TMP/.conveyor/canary/' | wc -l"; [ "${output// /}" = "1" ]
-}
-
-@test "preflight --escalations detects silent denial" {
-  use_cfg
-  run -3 bash -c "cd '$TMP' && CODEX_STUB_ESCALATION=denied $CX '$SCRIPTS/codex-exec.sh' preflight --escalations exec"
-  [[ "$output" == *"auto_review not active"* ]]
-}
-
-@test "preflight --escalations canary prompt requests escalation (both roles)" {
-  use_cfg
-  run bash -c "cd '$TMP' && CODEX_STUB_PROMPT_CAPTURE='$TMP/cap-e' CODEX_STUB_ESCALATION=ok $CX '$SCRIPTS/codex-exec.sh' preflight --escalations exec"
-  [ "$status" -eq 0 ]
-  grep -qF 'escalated-permissions mechanism' "$TMP/cap-e"
-  grep -qF '.git' "$TMP/cap-e"
-  run bash -c "cd '$TMP' && CODEX_STUB_PROMPT_CAPTURE='$TMP/cap-r' CODEX_STUB_ESCALATION=ok $CX '$SCRIPTS/codex-exec.sh' preflight --escalations review"
-  [ "$status" -eq 0 ]
-  grep -qF 'escalated-permissions mechanism' "$TMP/cap-r"
-  grep -qF 'network' "$TMP/cap-r"
-}
-
-@test "preflight --escalations second run hits cache, skips codex exec" {
-  use_cfg
-  run bash -c "cd '$TMP' && CODEX_STUB_ESCALATION=ok $CX '$SCRIPTS/codex-exec.sh' preflight --escalations exec"
-  [ "$status" -eq 0 ]
-  run bash -c "cd '$TMP' && CODEX_STUB_ESCALATION=ok $CX '$SCRIPTS/codex-exec.sh' preflight --escalations exec"
-  [ "$status" -eq 0 ]
-  run grep -c 'codex exec' "$RUN_LOG"
-  [ "$output" = "1" ]
+  wait_sentinel "$TMP/d2.md.done"
+  run cat "$TMP/d2.run.sh"
+  [[ "$output" == *'sandbox_mode="danger-full-access"'* && "$output" != *'-s danger-full-access'* ]]
 }
 
 @test "audit extracts privileged commands only" {
@@ -359,31 +323,4 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [[ "$output" == *"git push"* ]]
   [[ "$output" == *"core.hooksPath=/dev/null commit"* ]]
   [[ "$output" != *"ls -la"* ]]
-}
-
-@test "run --role review with codexPatService isolates gh auth" {
-  use_cfg
-  jq '.externalAgents.codexPatService = "conveyor-codex"' "$TMP/.claude/conveyor.json" > "$TMP/c.json"
-  mv "$TMP/c.json" "$TMP/.claude/conveyor.json"
-  echo hi > "$TMP/p.md"
-  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-x --model m \
-    --sandbox workspace-write --workdir '$TMP' --role review --pr 1 --issue 1 \
-    --out '$TMP/r.md' --prompt-file '$TMP/p.md' --visibility background"
-  grep -q 'GH_TOKEN=' "$TMP/r.run.sh"
-  grep -q 'GH_CONFIG_DIR=' "$TMP/r.run.sh"
-  grep -q 'HOME=' "$TMP/r.run.sh"
-  grep -q 'shell_environment_policy.include_only' "$TMP/r.run.sh"
-  grep -qF "security find-generic-password -s 'conveyor-codex' -w" "$TMP/r.run.sh"
-}
-
-@test "run --role review rejects bogus codexPatService charset" {
-  use_cfg
-  jq '.externalAgents.codexPatService = "bad; rm -rf /"' "$TMP/.claude/conveyor.json" > "$TMP/c.json"
-  mv "$TMP/c.json" "$TMP/.claude/conveyor.json"
-  echo hi > "$TMP/p.md"
-  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-x --model m \
-    --sandbox workspace-write --workdir '$TMP' --role review --pr 1 --issue 1 \
-    --out '$TMP/r.md' --prompt-file '$TMP/p.md' --visibility background"
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"codexPatService"* ]]
 }
