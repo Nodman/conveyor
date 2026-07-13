@@ -29,9 +29,12 @@ orchestrator keeps everything that publishes. Reviewer priority stays
 ## Decisions (locked)
 
 - **Mechanism:** `workspace-write` + `approval_policy = "on-request"` +
-  `approvals_reviewer = "auto_review"` + `--strict-config` (verified on fresh
-  AND resume). Sandbox allowlist unchanged; `danger-full-access` stays
-  rejected.
+  `approvals_reviewer = "auto_review"` (verified live on fresh AND resume).
+  Sandbox allowlist unchanged; `danger-full-access` stays rejected.
+  `--strict-config` was rejected: it validates the user's whole `config.toml`
+  and unrelated fields (e.g. a `mcp_servers.*.type` key) brick every run. The
+  canary's exit-0 check is the sole misconfig guard — it deterministically
+  catches a dropped/typo'd approval key (escalation runs but fails).
 - **Deny-by-default, per-run policy.** Policy text injected inline
   (`-c auto_review.policy=...`) from trusted templates shipped in `plugin/`
   — never read from repo/PR content — parameterized per run with owner/repo,

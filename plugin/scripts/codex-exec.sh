@@ -76,7 +76,7 @@ preflight_escalations() {
   fi
   local out="$scratch/canary.out" pj
   pj="$(printf '%s' "$policy" | jq -Rs .)"
-  ( cd "$scratch" && codex exec -m canary -s workspace-write --strict-config \
+  ( cd "$scratch" && codex exec -m canary -s workspace-write \
       -c 'approval_policy="on-request"' -c 'approvals_reviewer="auto_review"' \
       -c "auto_review.policy=$pj" --json - < "$prompt" ) > "$out" 2>&1 || true
   if grep -qF 'Approval policy is currently never' "$out"; then
@@ -94,7 +94,7 @@ preflight_escalations() {
     rc="$(jq -r '.item.exit_code // 1' <<<"$line" 2>/dev/null)"
     [[ "$c" == *"$pat"* && "$rc" == 0 ]] && { passed=1; break; }
   done < "$out"
-  [[ -n "$passed" ]] || die_code3 "canary $role: auto_review not active — escalated command did not execute successfully"
+  [[ -n "$passed" ]] || die_code3 "canary $role: auto_review not active — escalated command did not succeed. Likely: approval keys ('-c approval_policy'/'-c approvals_reviewer') not reaching codex, or a config load error. Check the log: $out"
   mkdir -p "$cache_dir"
   : > "$cache_dir/$role.$ver.$sha"
   echo ok
@@ -251,7 +251,7 @@ run_codex() {
     render_policy "$role" --name "$name" --workdir "$workdir" \
       ${pr:+--pr "$pr"} ${issue:+--issue "$issue"} | jq -Rs . > "$policy_json"
     # \$(cat …) stays literal in the runner: policy is read at run time, no heredoc quoting fight
-    role_flags="--strict-config -c 'approval_policy=\"on-request\"' -c 'approvals_reviewer=\"auto_review\"' -c \"auto_review.policy=\$(cat $policy_json)\""
+    role_flags="-c 'approval_policy=\"on-request\"' -c 'approvals_reviewer=\"auto_review\"' -c \"auto_review.policy=\$(cat $policy_json)\""
   fi
   [[ -n "$output_schema" ]] && schema_flag="--output-schema $output_schema"
   local pat_svc; pat_svc="$(cfg_or '.externalAgents.codexPatService' '')"

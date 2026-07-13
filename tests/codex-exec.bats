@@ -310,7 +310,6 @@ wait_sentinel() { # $1=path — poll up to ~5s
     --pr 12 --issue 7 --output-schema '$SCRIPTS/../config/codex-policies/report.schema.json' \
     --out '$TMP/r.md' --prompt-file '$TMP/p.md' --visibility background"
   [ "$status" -eq 0 ]
-  grep -q -- '--strict-config' "$TMP/r.run.sh"
   grep -q 'approvals_reviewer="auto_review"' "$TMP/r.run.sh"
   grep -q 'auto_review.policy=' "$TMP/r.run.sh"
   grep -q -- '--output-schema' "$TMP/r.run.sh"
