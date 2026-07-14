@@ -129,36 +129,33 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   [ "$(jq -r '.permissions.allow[3]' "$s")" = "Bash(gh issue create:*)" ]
 }
 
-@test "--grant-label-perms installs the autoMode lifecycle allow rule" {
+@test "--grant-label-perms writes the board-write grant to CLAUDE.md, not autoMode" {
   seed_cfg
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms"
   [ "$status" -eq 0 ]
-  s="$TMP/.claude/settings.json"
-  [ "$(jq '.autoMode.allow | length' "$s")" -eq 2 ]
-  [ "$(jq -r '.autoMode.allow[0]' "$s")" = '$defaults' ]
-  grep -q 'pre-authorized by the' "$s"
-  grep -q 'Merging PRs and moving cards to Done remain human-only' "$s"
+  [ "$(jq '.autoMode' "$TMP/.claude/settings.json")" = "null" ]
+  grep -qF -- '<!-- conveyor:grant:label-perms -->' "$TMP/CLAUDE.md"
+  grep -q 'Merging PRs and moving cards to Done remain human-only' "$TMP/CLAUDE.md"
 }
 
-@test "--grant-label-perms autoMode rule is idempotent — re-run adds no duplicates" {
+@test "--grant-label-perms grant section is idempotent — re-run keeps one marker" {
   seed_cfg
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms"
   [ "$status" -eq 0 ]
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms"
   [ "$status" -eq 0 ]
-  [ "$(jq '.autoMode.allow | length' "$TMP/.claude/settings.json")" -eq 2 ]
+  [ "$(grep -cF -- '<!-- conveyor:grant:label-perms -->' "$TMP/CLAUDE.md")" -eq 1 ]
 }
 
-@test "--grant-label-perms preserves pre-existing autoMode entries and other settings" {
+@test "--grant-label-perms leaves pre-existing autoMode entries alone" {
   seed_cfg
   printf '{"autoMode":{"allow":["custom rule one"]},"env":{"BAR":"2"}}' \
     > "$TMP/.claude/settings.json"
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms"
   [ "$status" -eq 0 ]
   s="$TMP/.claude/settings.json"
-  [ "$(jq '.autoMode.allow | length' "$s")" -eq 3 ]
+  [ "$(jq '.autoMode.allow | length' "$s")" -eq 1 ]
   [ "$(jq -r '.autoMode.allow[0]' "$s")" = "custom rule one" ]
-  [ "$(jq -r '.autoMode.allow[1]' "$s")" = '$defaults' ]
   [ "$(jq -r '.env.BAR' "$s")" = "2" ]
 }
 
@@ -177,16 +174,17 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   [[ "$output" == *"[dry-run]"* ]]
 }
 
-@test "--grant-auto-merge adds the merge allow and the auto-run autoMode rule" {
+@test "--grant-auto-merge adds the allow rules and the CLAUDE.md grant section" {
   seed_cfg
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-auto-merge"
   [ "$status" -eq 0 ]
   s="$TMP/.claude/settings.json"
   [ "$(jq '.permissions.allow | index("Bash(gh pr merge:*)")' "$s")" != "null" ]
-  [ "$(jq '.autoMode.allow | length' "$s")" -eq 2 ]
-  [ "$(jq -r '.autoMode.allow[0]' "$s")" = '$defaults' ]
-  grep -q 'conveyor:auto' "$s"
-  grep -q 'ready-to-merge' "$s"
+  [ "$(jq '.permissions.allow | map(select(test("codex-exec.sh run"))) | length' "$s")" -eq 1 ]
+  [ "$(jq '.autoMode' "$s")" = "null" ]
+  grep -qF -- '<!-- conveyor:grant:auto-merge -->' "$TMP/CLAUDE.md"
+  grep -q 'danger-full-access' "$TMP/CLAUDE.md"
+  grep -q 'ready-to-merge' "$TMP/CLAUDE.md"
 }
 
 @test "--grant-auto-merge is idempotent — re-run adds no duplicates" {
@@ -196,8 +194,8 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-auto-merge"
   [ "$status" -eq 0 ]
   s="$TMP/.claude/settings.json"
-  [ "$(jq '.permissions.allow | length' "$s")" -eq 1 ]
-  [ "$(jq '.autoMode.allow | length' "$s")" -eq 2 ]
+  [ "$(jq '.permissions.allow | length' "$s")" -eq 2 ]
+  [ "$(grep -cF -- '<!-- conveyor:grant:auto-merge -->' "$TMP/CLAUDE.md")" -eq 1 ]
 }
 
 @test "--grant-auto-merge composes with --grant-label-perms" {
@@ -205,9 +203,10 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms --grant-auto-merge"
   [ "$status" -eq 0 ]
   s="$TMP/.claude/settings.json"
-  [ "$(jq '.permissions.allow | length' "$s")" -eq 5 ]
-  [ "$(jq '.autoMode.allow | length' "$s")" -eq 3 ]
-  [ "$(jq -r '.autoMode.allow[0]' "$s")" = '$defaults' ]
+  [ "$(jq '.permissions.allow | length' "$s")" -eq 6 ]
+  [ "$(jq '.autoMode' "$s")" = "null" ]
+  grep -qF -- '<!-- conveyor:grant:label-perms -->' "$TMP/CLAUDE.md"
+  grep -qF -- '<!-- conveyor:grant:auto-merge -->' "$TMP/CLAUDE.md"
 }
 
 @test "--grant-auto-merge preserves existing settings" {
@@ -218,7 +217,7 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   [ "$status" -eq 0 ]
   s="$TMP/.claude/settings.json"
   [ "$(jq -r '.permissions.allow[0]' "$s")" = "Bash(ls:*)" ]
-  [ "$(jq '.permissions.allow | length' "$s")" -eq 2 ]
+  [ "$(jq '.permissions.allow | length' "$s")" -eq 3 ]
   [ "$(jq -r '.env.FOO' "$s")" = "1" ]
 }
 
@@ -228,4 +227,25 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   [ "$status" -eq 0 ]
   [ ! -e "$TMP/.claude/settings.json" ]
   [[ "$output" == *"[dry-run]"* ]]
+}
+
+@test "--grant-auto-merge wildcards the version segment when run from the plugin cache" {
+  seed_cfg
+  REPO="$BATS_TEST_DIRNAME/.."
+  fake="$TMP/fakehome/.claude/plugins/cache/mkt/conveyor/9.9.9"
+  mkdir -p "$fake"
+  cp -R "$REPO/plugin/scripts" "$REPO/plugin/templates" "$fake/"
+  run bash -c "cd '$TMP' && '$fake/scripts/scaffold.sh' --grant-auto-merge"
+  [ "$status" -eq 0 ]
+  s="$TMP/.claude/settings.json"
+  jq -r '.permissions.allow[]' "$s" | grep -qF "conveyor/*/scripts/codex-exec.sh run:*"
+}
+
+@test "grant sections survive a flag-less scaffold re-run" {
+  seed_cfg
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-auto-merge"
+  [ "$status" -eq 0 ]
+  run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh'"
+  [ "$status" -eq 0 ]
+  [ "$(grep -cF -- '<!-- conveyor:grant:auto-merge -->' "$TMP/CLAUDE.md")" -eq 1 ]
 }

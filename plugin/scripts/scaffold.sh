@@ -62,7 +62,16 @@ label "$ready_to_merge" FBCA04 "All agent gates passed; awaiting human merge"
 # 5. CLAUDE.md conveyor block (idempotent via claude-block.sh).
 say "CLAUDE.md conveyor block"
 if [[ $dry -eq 0 ]]; then
-  sed "$sub" "$tpl/claude-block.md" | "$here/claude-block.sh" CLAUDE.md
+  {
+    sed "$sub" "$tpl/claude-block.md"
+    # grant sections persist across flag-less re-runs via their marker lines
+    if [[ $grant_perms -eq 1 ]] || grep -qF -- '<!-- conveyor:grant:label-perms -->' CLAUDE.md 2>/dev/null; then
+      printf '\n'; cat "$tpl/grant-label-perms.md"
+    fi
+    if [[ $grant_auto -eq 1 ]] || grep -qF -- '<!-- conveyor:grant:auto-merge -->' CLAUDE.md 2>/dev/null; then
+      printf '\n'; cat "$tpl/grant-auto-merge.md"
+    fi
+  } | "$here/claude-block.sh" CLAUDE.md
 fi
 
 # 6. Gitignore the agent worktree dir — append once.
@@ -85,11 +94,8 @@ if [[ $grant_perms -eq 1 ]]; then
     s=.claude/settings.json
     [[ -s "$s" ]] || echo '{}' > "$s"
     tmp=$(mktemp)
-    rule="Conveyor board lifecycle writes to this project's own GitHub repo are pre-authorized by the user's standing workflow (CLAUDE.md): gh issue create/comment/edit, gh pr create/comment/edit, label add/remove, board card moves via gh project or card.sh, and pushing feature branches. This includes filing backlog issues for out-of-scope findings discovered during a task — the workflow mandates it. Merging PRs and moving cards to Done remain human-only and are NOT covered."
-    jq --arg rule "$rule" '.permissions.allow = ((.permissions.allow // []) +
-        (["Bash(gh pr edit:*)","Bash(gh issue edit:*)","Bash(gh issue comment:*)","Bash(gh issue create:*)"] - (.permissions.allow // [])))
-      | .autoMode.allow = ((.autoMode.allow // []) +
-        (["$defaults", $rule] - (.autoMode.allow // [])))' \
+    jq '.permissions.allow = ((.permissions.allow // []) +
+        (["Bash(gh pr edit:*)","Bash(gh issue edit:*)","Bash(gh issue comment:*)","Bash(gh issue create:*)"] - (.permissions.allow // [])))' \
       "$s" > "$tmp" && mv "$tmp" "$s"
   fi
 fi
@@ -102,11 +108,14 @@ if [[ $grant_auto -eq 1 ]]; then
     s=.claude/settings.json
     [[ -s "$s" ]] || echo '{}' > "$s"
     tmp=$(mktemp)
-    rule="During a declared '/conveyor:auto' run the user has explicitly agreed, via the per-run prompt, to autonomous operation: squash-merging PRs that carry the ready-to-merge label (gh pr merge --squash --delete-branch) and judge-agent self-approval of specs and plans are pre-authorized. Outside a declared auto run, merging PRs stays human-only. Moving cards to Done is never agent-performed — board automation owns it."
-    jq --arg rule "$rule" '.permissions.allow = ((.permissions.allow // []) +
-        (["Bash(gh pr merge:*)"] - (.permissions.allow // [])))
-      | .autoMode.allow = ((.autoMode.allow // []) +
-        (["$defaults", $rule] - (.autoMode.allow // [])))' \
+    scripts_dir="$(cd "$here" && pwd)"
+    if [[ "$scripts_dir" == */.claude/plugins/cache/*/scripts ]]; then
+      codex_rule="Bash($(dirname "$(dirname "$scripts_dir")")/*/scripts/codex-exec.sh run:*)"
+    else
+      codex_rule="Bash(${scripts_dir}/codex-exec.sh run:*)"
+    fi
+    jq --arg crule "$codex_rule" '.permissions.allow = ((.permissions.allow // []) +
+        (["Bash(gh pr merge:*)", $crule] - (.permissions.allow // [])))' \
       "$s" > "$tmp" && mv "$tmp" "$s"
   fi
 fi
