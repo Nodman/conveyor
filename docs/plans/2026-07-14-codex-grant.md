@@ -74,7 +74,7 @@ Interfaces: produces the codex rule shape
   else
     codex_rule="Bash(${scripts_dir}/codex-exec.sh run:*)"
   fi
-  codex_sentence="The user has explicitly pre-authorized conveyor's codex write lane: running codex-exec.sh run with --sandbox danger-full-access inside per-issue worktrees. This grants codex full file and network access (it edits, tests, commits, pushes) and visibility of the local environment. Applies in declared /conveyor:auto runs and in human-gated sessions."
+  codex_sentence="Codex write lane: codex-exec.sh run with --sandbox danger-full-access inside per-issue worktrees — full file and network access (codex edits, tests, commits, pushes) and local environment visibility. This rule is written only by scaffold.sh --grant-auto-merge, which conveyor runs only after the human accepts the /conveyor:auto agreement prompt that names codex full access. Applies in declared /conveyor:auto runs and in human-gated sessions."
   ```
 
   jq becomes:

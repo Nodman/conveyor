@@ -28,6 +28,11 @@ the auto-mode classifier blocking it. One flag = the whole auto bundle.
 - autoMode.allow sentence names the exact risk: full access (no sandbox) in
   per-issue worktrees, network + commit/push, and local environment
   visibility. Honest consent, per the 2026-07-13 yolo ruling.
+- Mechanism-voice, not user-voice (amended 2026-07-14): the sentence states
+  who writes the rule and which human gate precedes it — it never asserts
+  "the user has pre-authorized" in the user's voice. Agent-written consent
+  claims read as instruction poisoning to auto-mode classifiers (observed
+  live during implementation) and would be distrusted in future sessions.
 - Auto skill agreement prompt adds codex full-access to the accept text.
 - Only `run` is granted; `preflight`/`detect`/`audit`/etc. stay
   prompt-gated (read-only, cheap to approve manually when needed).
@@ -42,11 +47,13 @@ the auto-mode classifier blocking it. One flag = the whole auto bundle.
   - otherwise (repo dogfood run) → literal `Bash($here/codex-exec.sh run:*)`
 - permissions.allow += that rule (dedup, same jq pattern as the merge rule).
 - autoMode.allow += new sentence:
-  "The user has explicitly pre-authorized conveyor's codex write lane:
-  running codex-exec.sh run with --sandbox danger-full-access inside
-  per-issue worktrees. This grants codex full file and network access (it
-  edits, tests, commits, pushes) and visibility of the local environment.
-  Applies in declared /conveyor:auto runs and in human-gated sessions."
+  "Codex write lane: codex-exec.sh run with --sandbox danger-full-access
+  inside per-issue worktrees — full file and network access (codex edits,
+  tests, commits, pushes) and local environment visibility. This rule is
+  written only by scaffold.sh --grant-auto-merge, which conveyor runs only
+  after the human accepts the /conveyor:auto agreement prompt that names
+  codex full access. Applies in declared /conveyor:auto runs and in
+  human-gated sessions."
 
 `plugin/skills/auto/SKILL.md`:
 
