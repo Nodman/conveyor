@@ -2,6 +2,17 @@
 
 Each entry: `## YYYY-MM-DD — <topic>` followed by bullets — chose X over Y, because…
 
+## 2026-07-13 — Auto flattened: no per-card lead
+
+- Leads are subagents and subagents cannot spawn subagents — the lifecycle
+  stalled inside the lead; the middle model added cost and drift.
+- The main session runs each card itself (the /conveyor:work flow); auto
+  gates unchanged. Triage keeps only the read-only classifier; the session
+  writes specs/plans and spawns the judges.
+- The auto-merge gate keys to the in-session /conveyor:auto declaration.
+  Supersedes the "lead's spawn prompt" line of the 2026-07-11 ruling; the
+  separate-skill decision stands.
+
 ## 2026-07-13 — Routing paradigm: cost-ranked pool, escalation over thrift
 
 - Pool scores rank cost instead of a code benchmark; gpt-5.5 re-admitted;

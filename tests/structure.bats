@@ -86,8 +86,11 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
   grep -qF -- '3 consecutive' "$f"
   grep -qF -- 'spec-judge' "$f"
   grep -qF -- 'plan-judge' "$f"
+  grep -qF -- 'conveyor:executing-tasks' "$f"
+  grep -qF -- 'Auto-merge step' "$f"
   grep -qF -- 'conveyor:auto' "$REPO/plugin/skills/work/SKILL.md"
-  ! grep -qF -- 'gh pr merge' "$REPO/plugin/skills/work/SKILL.md"
+  # decisive grep last, per bats gotcha — combine both negated checks into one
+  ! { grep -qwi -- 'lead' "$f" || grep -qF -- 'gh pr merge' "$REPO/plugin/skills/work/SKILL.md"; }
 }
 
 @test "executing-tasks defines the auto-merge step" {
