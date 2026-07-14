@@ -51,7 +51,7 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    root — codex resolves `.agents/skills` per root, and a worktree is its
    own root; without this codex can't see the TDD or project skills. Spawn
    via `${CLAUDE_PLUGIN_ROOT}/scripts/codex-exec.sh
-   run --sandbox danger-full-access --workdir <issue worktree> --name
+   run --workdir <issue worktree> --name
    codex-<model>--<issue>-<n> --model <model> --out <report> --output-schema
    ${CLAUDE_PLUGIN_ROOT}/config/report.schema.json --prompt-file <f>`; the
    prompt file carries the task text verbatim, output bar, report contract,
@@ -85,8 +85,7 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    red checks → treat as a blocking finding, route to the executor.
 2. `card.sh move <issue> agentReview`. Spawn the review gate per routing (never
    a cheaper model override; never the PR's sole-author family). A claude gate
-   runs **pr-reviewer**; a codex gate runs via `codex-exec.sh run --sandbox
-   danger-full-access` (default read-only has no network → cannot post) and
+   runs **pr-reviewer**; a codex gate runs via `codex-exec.sh run` and
    posts its own review + labels directly under its `**[<agent-name>]**`
    prefix. Round 1 =
    full charter; re-reviews = scoped to the fixes + their comment threads (say

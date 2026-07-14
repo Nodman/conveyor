@@ -10,7 +10,7 @@ usage() {
     echo "       codex-exec.sh detect"
     echo "       codex-exec.sh set-visibility <window|background>"
     echo "       codex-exec.sh session-id <log>"
-    echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--visibility <mode>] [--sandbox read-only|workspace-write|danger-full-access] [--workdir <dir>] [--output-schema <f>]"
+    echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--visibility <mode>] [--sandbox read-only|workspace-write|danger-full-access (default: danger-full-access)] [--workdir <dir>] [--output-schema <f>]"
     echo "       codex-exec.sh audit <log>"
     echo "       codex-exec.sh render <log> <report> (internal: codex --json stream on stdin)"
   } >&2
@@ -133,7 +133,8 @@ render_stream() {
 }
 
 run_codex() {
-  local name="" model="" out="" resume="" prompt_file="" vis="" sandbox_mode="read-only" workdir="" pane=""
+  # default per DECISIONS.md 2026-07-13 yolo ruling: codex runs unsandboxed
+  local name="" model="" out="" resume="" prompt_file="" vis="" sandbox_mode="danger-full-access" workdir="" pane=""
   local output_schema=""
   while [[ $# -gt 0 ]]; do
     case "$1" in

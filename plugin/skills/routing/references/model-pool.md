@@ -20,7 +20,8 @@ Scores 1-10, higher better.
 
 - **Agent tool** — permissions, in-band result, SendMessage resume, visible
   in token budgets.
-- **codex CLI** — full access (`danger-full-access`); no mid-run steering;
+- **codex CLI** — full access (`danger-full-access`, the codex-exec.sh
+  default); no mid-run steering;
   file report + log + sentinel-carries-exit-code; session-id resume only;
   audit post-hoc; INVISIBLE to harness token budgets (track separately).
 
