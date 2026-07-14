@@ -35,7 +35,9 @@ live in `${CLAUDE_PLUGIN_ROOT}/scripts/`.
      value up to the first dash (`fable-5` → `fable`), read-only instructions.
    - codex runner → `codex-exec.sh run --name codex-<model> --model <model>
      --workdir <repo root> --out <dir>/<name>-r1.md --prompt-file
-     <dir>/<name>-r1-prompt.md` (script enforces the read-only sandbox).
+     <dir>/<name>-r1-prompt.md`. Deliberation-only is enforced by the
+     prompt, not a sandbox — codex runs full-access (yolo ruling) so it
+     can research the web.
    Wait on sentinels/agent returns; poll every ~15s, cap 15 minutes. Timeout
    or failure → drop that member and tell the user.
 3. **Round 2 — rebuttal.** Each member receives all other proposals verbatim:

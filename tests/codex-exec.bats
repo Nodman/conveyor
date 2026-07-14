@@ -85,14 +85,14 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [ "$output" = "0000-mock-session" ]
 }
 
-@test "run codex args: read-only, model, stdin prompt" {
+@test "run codex args: default full-access, model, stdin prompt" {
   use_cfg
   printf 'q\n' > "$TMP/p.txt"
   run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r1.md' --prompt-file '$TMP/p.txt'"
   wait_sentinel "$TMP/r1.md.done"
   run grep -F 'codex exec' "$RUN_LOG"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"-s read-only"* && "$output" == *"-m gpt-5.6-sol"* && "$output" == *"-o $TMP/r1.md"* && "$output" == *"--json"* ]]
+  [[ "$output" == *"-s danger-full-access"* && "$output" == *"-m gpt-5.6-sol"* && "$output" == *"-o $TMP/r1.md"* && "$output" == *"--json"* ]]
 }
 
 @test "run tmux mode: pane spawned with runner script" {
@@ -135,7 +135,7 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [[ "$output" == *"Terminal"* && "$output" == *"$TMP/r1.run.sh"* ]]
 }
 
-@test "run resume: read-only via -c sandbox_mode, never -s or --last; report created" {
+@test "run resume: default sandbox via -c sandbox_mode, never -s or --last; report created" {
   use_cfg
   printf 'rebuttal\n' > "$TMP/p.txt"
   run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r2.md' --prompt-file '$TMP/p.txt' --resume 0000-mock-session"
@@ -145,7 +145,7 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [ "$(cat "$TMP/r2.md.done")" = "0" ]
   run cat "$TMP/r2.run.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *'codex exec resume 0000-mock-session'* && "$output" == *'sandbox_mode="read-only"'* && "$output" != *'-s read-only'* && "$output" != *'--last'* && "$output" == *"--json"* ]]
+  [[ "$output" == *'codex exec resume 0000-mock-session'* && "$output" == *'sandbox_mode="danger-full-access"'* && "$output" != *'-s danger-full-access'* && "$output" != *'--last'* && "$output" == *"--json"* ]]
 }
 
 @test "run without required args → usage" {
@@ -219,14 +219,14 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [[ "$output" == *"absolute --out/--prompt-file required with --workdir"* ]]
 }
 
-@test "run default sandbox unchanged: read-only" {
+@test "run default sandbox: danger-full-access (yolo ruling)" {
   use_cfg
   printf 'q\n' > "$TMP/p.txt"
   run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/w5.md' --prompt-file '$TMP/p.txt'"
   wait_sentinel "$TMP/w5.md.done"
   run grep -F 'codex exec' "$RUN_LOG"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"-s read-only"* ]]
+  [[ "$output" == *"-s danger-full-access"* ]]
 }
 
 @test "render: raw JSONL kept, one synthetic session line, no ESC, survives garbage" {
