@@ -183,7 +183,9 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   [ "$status" -eq 0 ]
   s="$TMP/.claude/settings.json"
   [ "$(jq '.permissions.allow | index("Bash(gh pr merge:*)")' "$s")" != "null" ]
-  [ "$(jq '.autoMode.allow | length' "$s")" -eq 2 ]
+  [ "$(jq '.permissions.allow | map(select(test("codex-exec.sh run"))) | length' "$s")" -eq 1 ]
+  grep -q 'danger-full-access' "$s"
+  [ "$(jq '.autoMode.allow | length' "$s")" -eq 3 ]
   [ "$(jq -r '.autoMode.allow[0]' "$s")" = '$defaults' ]
   grep -q 'conveyor:auto' "$s"
   grep -q 'ready-to-merge' "$s"
@@ -196,8 +198,8 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-auto-merge"
   [ "$status" -eq 0 ]
   s="$TMP/.claude/settings.json"
-  [ "$(jq '.permissions.allow | length' "$s")" -eq 1 ]
-  [ "$(jq '.autoMode.allow | length' "$s")" -eq 2 ]
+  [ "$(jq '.permissions.allow | length' "$s")" -eq 2 ]
+  [ "$(jq '.autoMode.allow | length' "$s")" -eq 3 ]
 }
 
 @test "--grant-auto-merge composes with --grant-label-perms" {
@@ -205,8 +207,8 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh' --grant-label-perms --grant-auto-merge"
   [ "$status" -eq 0 ]
   s="$TMP/.claude/settings.json"
-  [ "$(jq '.permissions.allow | length' "$s")" -eq 5 ]
-  [ "$(jq '.autoMode.allow | length' "$s")" -eq 3 ]
+  [ "$(jq '.permissions.allow | length' "$s")" -eq 6 ]
+  [ "$(jq '.autoMode.allow | length' "$s")" -eq 4 ]
   [ "$(jq -r '.autoMode.allow[0]' "$s")" = '$defaults' ]
 }
 
@@ -218,7 +220,7 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   [ "$status" -eq 0 ]
   s="$TMP/.claude/settings.json"
   [ "$(jq -r '.permissions.allow[0]' "$s")" = "Bash(ls:*)" ]
-  [ "$(jq '.permissions.allow | length' "$s")" -eq 2 ]
+  [ "$(jq '.permissions.allow | length' "$s")" -eq 3 ]
   [ "$(jq -r '.env.FOO' "$s")" = "1" ]
 }
 
@@ -228,4 +230,16 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   [ "$status" -eq 0 ]
   [ ! -e "$TMP/.claude/settings.json" ]
   [[ "$output" == *"[dry-run]"* ]]
+}
+
+@test "--grant-auto-merge wildcards the version segment when run from the plugin cache" {
+  seed_cfg
+  REPO="$BATS_TEST_DIRNAME/.."
+  fake="$TMP/fakehome/.claude/plugins/cache/mkt/conveyor/9.9.9"
+  mkdir -p "$fake"
+  cp -R "$REPO/plugin/scripts" "$REPO/plugin/templates" "$fake/"
+  run bash -c "cd '$TMP' && '$fake/scripts/scaffold.sh' --grant-auto-merge"
+  [ "$status" -eq 0 ]
+  s="$TMP/.claude/settings.json"
+  jq -r '.permissions.allow[]' "$s" | grep -qF "conveyor/*/scripts/codex-exec.sh run:*"
 }

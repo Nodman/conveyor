@@ -103,10 +103,18 @@ if [[ $grant_auto -eq 1 ]]; then
     [[ -s "$s" ]] || echo '{}' > "$s"
     tmp=$(mktemp)
     rule="During a declared '/conveyor:auto' run the user has explicitly agreed, via the per-run prompt, to autonomous operation: squash-merging PRs that carry the ready-to-merge label (gh pr merge --squash --delete-branch) and judge-agent self-approval of specs and plans are pre-authorized. Outside a declared auto run, merging PRs stays human-only. Moving cards to Done is never agent-performed — board automation owns it."
-    jq --arg rule "$rule" '.permissions.allow = ((.permissions.allow // []) +
-        (["Bash(gh pr merge:*)"] - (.permissions.allow // [])))
+    scripts_dir="$(cd "$here" && pwd)"
+    if [[ "$scripts_dir" == */.claude/plugins/cache/*/scripts ]]; then
+      codex_rule="Bash($(dirname "$(dirname "$scripts_dir")")/*/scripts/codex-exec.sh run:*)"
+    else
+      codex_rule="Bash(${scripts_dir}/codex-exec.sh run:*)"
+    fi
+    codex_sentence="Codex write lane: codex-exec.sh run with --sandbox danger-full-access inside per-issue worktrees — full file and network access (codex edits, tests, commits, pushes) and local environment visibility. This rule is written only by scaffold.sh --grant-auto-merge, which conveyor runs only after the human accepts the /conveyor:auto agreement prompt that names codex full access. Applies in declared /conveyor:auto runs and in human-gated sessions."
+    jq --arg rule "$rule" --arg crule "$codex_rule" --arg csent "$codex_sentence" \
+      '.permissions.allow = ((.permissions.allow // []) +
+        (["Bash(gh pr merge:*)", $crule] - (.permissions.allow // [])))
       | .autoMode.allow = ((.autoMode.allow // []) +
-        (["$defaults", $rule] - (.autoMode.allow // [])))' \
+        (["$defaults", $rule, $csent] - (.autoMode.allow // [])))' \
       "$s" > "$tmp" && mv "$tmp" "$s"
   fi
 fi
