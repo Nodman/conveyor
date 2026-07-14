@@ -33,6 +33,20 @@ the auto-mode classifier blocking it. One flag = the whole auto bundle.
   "the user has pre-authorized" in the user's voice. Agent-written consent
   claims read as instruction poisoning to auto-mode classifiers (observed
   live during implementation) and would be distrusted in future sessions.
+- Grant prose lives in the CLAUDE.md conveyor block, NOT autoMode.allow
+  (amended 2026-07-14, review finding): the classifier does not read
+  autoMode from project .claude/settings.json (docs: auto-mode-config) —
+  only ~/.claude, managed settings, --settings. CLAUDE.md IS read by the
+  classifier and is project-scoped + PR-reviewable. The permissions.allow
+  Bash rules stay in project settings (read after workspace trust; narrow
+  rules resolve before the classifier in auto mode).
+- Same treatment for the two pre-existing dead sentences (merge rule from
+  --grant-auto-merge, lifecycle rule from --grant-label-perms): moved to
+  CLAUDE.md grant sections; scaffold stops writing autoMode entirely.
+  User-approved scope extension in this PR.
+- Grant sections survive flag-less scaffold re-runs: marker comments
+  (`<!-- conveyor:grant:auto-merge -->`, `<!-- conveyor:grant:label-perms -->`)
+  detected in the existing CLAUDE.md block re-include the section.
 - Auto skill agreement prompt adds codex full-access to the accept text.
 - Only `run` is granted; `preflight`/`detect`/`audit`/etc. stay
   prompt-gated (read-only, cheap to approve manually when needed).

@@ -131,6 +131,31 @@ the step 2 check).
 - [ ] `bats tests` → all pass.
 - [ ] Commit: `docs(auto): agreement + grant check cover codex full-access; 0.1.26 (#75)`
 
+## Task 3 — review round 2: grant prose to CLAUDE.md (added 2026-07-14)
+
+Reviewer finding (PR 76, comment 3576989957): the classifier ignores
+autoMode in project settings. User decisions: prose → CLAUDE.md conveyor
+block; also move the two pre-existing dead sentences; scaffold stops
+writing autoMode.
+
+Files: `plugin/templates/grant-auto-merge.md` (new),
+`plugin/templates/grant-label-perms.md` (new), `plugin/scripts/scaffold.sh`,
+`tests/scaffold.bats`.
+
+- [ ] Tests first: in the four grant-auto tests replace autoMode asserts
+  with `[ "$(jq '.autoMode' "$s")" = "null" ]`; grep `danger-full-access`
+  and the `conveyor:grant:auto-merge` marker in `$TMP/CLAUDE.md`; composes
+  test greps both markers; add a persistence test (grant run, then plain
+  run → marker still present, exactly once). Verify red.
+- [ ] Templates: marker comment first line, then mechanism-voice prose
+  (merge + codex paragraphs in grant-auto-merge.md; lifecycle paragraph in
+  grant-label-perms.md).
+- [ ] scaffold.sh step 5: compose block = claude-block.md + grant templates
+  when flag given OR marker already in CLAUDE.md. Steps 7/8: delete the
+  autoMode jq writes (keep permissions.allow).
+- [ ] Full suite green, shellcheck clean.
+- [ ] Commit: `fix(scaffold): grant prose to CLAUDE.md — classifier ignores project autoMode (#75)`
+
 ## Board mapping
 
 Single-PR plan → #75 is the card, already In Progress.
