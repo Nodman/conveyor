@@ -110,3 +110,10 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
   # resume is always by explicit id (decisive grep last, per bats gotcha)
   ! grep -qF -- '--last' "$f"
 }
+
+@test "doctor stamp commit is branch-guarded" {
+  f="$REPO/plugin/skills/doctor/SKILL.md"
+  grep -qF -- 'NEVER commit' "$f"
+  grep -qF -- 'rides along' "$f"
+  grep -qF -- "sed 's|^origin/||'" "$f"
+}

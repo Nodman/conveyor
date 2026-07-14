@@ -44,6 +44,11 @@ re-run only when something looks wrong.
    `card.sh move`, label, or comment command). Ask before fixing anything
    that changes board state; never move a card to Done (automation only).
    If the script printed `stamped pluginVersion … — commit .claude/conveyor.json`,
-   run `git commit -m "chore: doctor — stamp pluginVersion <new>" .claude/conveyor.json`.
-   No ask is needed; this shares the installed version with other clones.
+   check the branch first: `git branch --show-current` vs the default from
+   `git symbolic-ref --short refs/remotes/origin/HEAD | sed 's|^origin/||'`
+   (the strip matters — unstripped, the compare never matches). On the default branch
+   NEVER commit — it is usually protected; leave the file dirty and say the
+   stamp rides along with the next branch/PR. On any other branch, run
+   `git commit -m "chore: doctor — stamp pluginVersion <new>" .claude/conveyor.json`
+   without asking; this shares the installed version with other clones.
    No findings → say "no drift" and stop.
