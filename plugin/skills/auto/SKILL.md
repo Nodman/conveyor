@@ -10,12 +10,13 @@ empty. Everything here applies to this run only; a plain `/conveyor:work`
 afterwards is human-gated again.
 
 1. **Agreement — every run.** AskUserQuestion; the accept option reads:
-   "I agree — autonomous run: merge PRs, self-approve specs/plans, file and
-   triage issues without asking me." Decline → offer a plain run and stop.
+   "I agree — autonomous run: merge PRs, self-approve specs/plans,
+   spawn codex full-access, file and triage issues without asking me."
+   Decline → offer a plain run and stop.
    The agreement in-session is what pre-authorizes the merge writes.
 2. **Permissions — once per repo.** If `.claude/settings.json` lacks
-   `Bash(gh pr merge:*)` in `permissions.allow` OR lacks the auto-run rule
-   in `autoMode.allow`, run
+   `Bash(gh pr merge:*)` or a `codex-exec.sh run` rule in
+   `permissions.allow`, OR lacks the auto-run rule in `autoMode.allow`, run
    `${CLAUDE_PLUGIN_ROOT}/scripts/scaffold.sh --grant-auto-merge` (it is
    idempotent — when in doubt, run it).
 3. **Card pick rules.** `/conveyor:doctor` first; surface drift before
