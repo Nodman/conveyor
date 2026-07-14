@@ -92,7 +92,7 @@ wait_sentinel() { # $1=path — poll up to ~5s
   wait_sentinel "$TMP/r1.md.done"
   run grep -F 'codex exec' "$RUN_LOG"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"-s danger-full-access"* && "$output" == *"-m gpt-5.6-sol"* && "$output" == *"-o $TMP/r1.md"* && "$output" == *"--json"* ]]
+  [[ "$output" == *"-s danger-full-access"* && "$output" == *"-m gpt-5.6-sol"* && "$output" == *"-c tools.web_search=true"* && "$output" == *"-o $TMP/r1.md"* && "$output" == *"--json"* ]]
 }
 
 @test "run tmux mode: pane spawned with runner script" {
@@ -145,7 +145,7 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [ "$(cat "$TMP/r2.md.done")" = "0" ]
   run cat "$TMP/r2.run.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *'codex exec resume 0000-mock-session'* && "$output" == *'sandbox_mode="danger-full-access"'* && "$output" != *'-s danger-full-access'* && "$output" != *'--last'* && "$output" == *"--json"* ]]
+  [[ "$output" == *'codex exec resume 0000-mock-session'* && "$output" == *'sandbox_mode="danger-full-access"'* && "$output" != *'-s danger-full-access'* && "$output" != *'--last'* && "$output" == *"-c tools.web_search=true"* && "$output" == *"--json"* ]]
 }
 
 @test "run without required args → usage" {
