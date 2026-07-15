@@ -54,6 +54,16 @@ Config: `.claude/conveyor.json` (labels, board ids). Board moves go through
     ... (one comments[] group per finding)
   ```
 
+  If you pass `commit_id`, it must be the full 40-char OID
+  (`gh pr view <n> --json headRefOid -q .headRefOid`) — an abbreviated SHA
+  422s (`Variable $commitOID of type GitObjectID was provided invalid value`).
+
+  **Verify every review post landed.** A failed `gh api` post is invisible if
+  you only look for the success URL. After posting any review (findings or
+  clean summary), re-list `gh api repos/{owner}/{repo}/pulls/<n>/reviews` and
+  confirm yours is present. Not there → the post failed; fix and repost. Never
+  label, move the card, or report a verdict on an unverified post.
+
   Each inline comment starts `**[blocking]**` or `**[nit]**`. A finding that
   can't anchor to a changed diff line (cross-file issue, missing change) goes
   as a bullet in the review `body` instead. Then move the card back:
