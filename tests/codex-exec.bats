@@ -4,7 +4,7 @@ load helpers/env
 
 use_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/conveyor.json"; }
 # every invocation scrubs terminal vars so the dev's real tmux/iTerm doesn't leak in
-CX="env -u TMUX LC_TERMINAL= TERM_PROGRAM="
+CX="env -u TMUX -u TMUX_PANE LC_TERMINAL= TERM_PROGRAM="
 
 @test "detect: TMUX set wins" {
   use_cfg
@@ -95,15 +95,15 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [[ "$output" == *"-s danger-full-access"* && "$output" == *"-m gpt-5.6-sol"* && "$output" == *"-c tools.web_search=true"* && "$output" == *"-o $TMP/r1.md"* && "$output" == *"--json"* ]]
 }
 
-@test "run tmux mode: pane spawned with runner script" {
+@test "run tmux mode: no right split creates targeted horizontal split" {
   use_cfg
   printf 'q\n' > "$TMP/p.txt"
-  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r1.md' --prompt-file '$TMP/p.txt' --visibility tmux"
+  run bash -c "cd '$TMP' && $CX TMUX_PANE=%1 MOCK_TMUX_LAYOUT=no-split '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r1.md' --prompt-file '$TMP/p.txt' --visibility tmux"
   [ "$status" -eq 0 ]
   grep -qF 'mode=tmux' <<<"$output"
   run grep -F 'tmux split-window' "$RUN_LOG"
   [ "$status" -eq 0 ]
-  grep -qF -- '-d -h -l 40%' <<<"$output"
+  grep -qF -- '-d -h -l 40% -t %1' <<<"$output"
   grep -qF "$TMP/r1.run.sh" <<<"$output"
   run grep -F 'tmux select-pane' "$RUN_LOG"
   [ "$status" -eq 0 ]
@@ -113,6 +113,39 @@ wait_sentinel() { # $1=path — poll up to ~5s
   run cat "$TMP/r1.run.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"codex exec"* && "$output" == *"> $TMP/r1.md.done"* && "$output" == *"sleep 10"* && "$output" == *"--json"* && "$output" == *"codex-exec.sh render $TMP/r1.log"* && "$output" == *"printf -- '--------------"* ]]
+}
+
+@test "run tmux mode: existing right split stacks under bottom-most pane" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX TMUX_PANE=%1 MOCK_TMUX_LAYOUT=split-exists '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r1.md' --prompt-file '$TMP/p.txt' --visibility tmux"
+  [ "$status" -eq 0 ]
+  run grep -F 'tmux split-window' "$RUN_LOG"
+  [ "$status" -eq 0 ]
+  grep -qF -- '-d -v -t %3' <<<"$output"
+}
+
+@test "run tmux mode: session pane target propagates through tmux calls" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX TMUX_PANE=%session MOCK_TMUX_LAYOUT=no-split '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r1.md' --prompt-file '$TMP/p.txt' --visibility tmux"
+  [ "$status" -eq 0 ]
+  grep -qF 'tmux display-message -p -t %session #{window_id}' "$RUN_LOG"
+  grep -qF 'tmux list-panes -t @7 -F #{pane_id} #{pane_at_right}' "$RUN_LOG"
+  grep -qF 'tmux split-window -d -h -l 40% -t %session' "$RUN_LOG"
+  grep -qF 'tmux select-pane -t %99 -T codex-gpt-5.6-sol' "$RUN_LOG"
+}
+
+@test "run tmux mode: unset session pane preserves current-window fallback" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol --model gpt-5.6-sol --out '$TMP/r1.md' --prompt-file '$TMP/p.txt' --visibility tmux"
+  [ "$status" -eq 0 ]
+  run grep -F 'tmux split-window' "$RUN_LOG"
+  [ "$status" -eq 0 ]
+  grep -qF -- '-d -h -l 40% -P -F #{pane_id}' <<<"$output"
+  ! grep -qF 'tmux display-message' "$RUN_LOG"
+  ! grep -qF 'tmux list-panes' "$RUN_LOG"
 }
 
 @test "run iterm mode: split vertically, session named after agent" {
