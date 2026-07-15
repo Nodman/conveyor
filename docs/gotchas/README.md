@@ -7,6 +7,7 @@ Full entries live in `<category>.md` files beside this one, added via the convey
 - codex: `--strict-config` validates the whole config.toml (breaks on user MCP-server fields)
 - codex: Escalated commands are shell-wrapped; the "never" denial string is not universal
 - github-api: Projects item-list lags item-add
+- github-api: PR review post with abbreviated commit_id fails silently
 - bats: Mid-test `[[ ]]` assertion failures do not fail the test
 - bats: Clearing `TMUX` alone still leaks the host pane target
 - bats: `script` pty syntax differs between macOS/BSD and Linux
