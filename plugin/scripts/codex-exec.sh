@@ -163,9 +163,11 @@ run_codex() {
 
   local log="${out%.md}.log" sentinel="$out.done" runner="${out%.md}.run.sh"
   rm -f "$out" "$sentinel"
-  local codex_cmd="codex exec -m $model" sandbox="-s $sandbox_mode"
+  # web_search is off by default; -c form works on fresh AND resume (live-verified 0.144.1)
+  local search="-c tools.web_search=true"
+  local codex_cmd="codex exec -m $model $search" sandbox="-s $sandbox_mode"
   # resume subcommand rejects -s; set the sandbox via config instead
-  if [[ -n "$resume" ]]; then codex_cmd="codex exec resume $resume"; sandbox="-c 'sandbox_mode=\"$sandbox_mode\"'"; fi
+  if [[ -n "$resume" ]]; then codex_cmd="codex exec resume $resume $search"; sandbox="-c 'sandbox_mode=\"$sandbox_mode\"'"; fi
   local schema_flag=""
   [[ -n "$output_schema" ]] && schema_flag="--output-schema \"$output_schema\""
   local cd_line=""

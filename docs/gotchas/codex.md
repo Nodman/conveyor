@@ -31,6 +31,11 @@ Verified against the real CLI (authed, gpt-5.6-sol) in a throwaway git repo unde
 - RESUME `codex exec resume <sid> -c auto_review.policy=… -c 'sandbox_mode="workspace-write"'`: same escalated read executed, exit 0. Inline policy accepted on resume too. (`resume` still rejects `-s` — set sandbox via `-c sandbox_mode`.)
 - PAT isolation (`GH_TOKEN` + isolated `HOME`/`GH_CONFIG_DIR` + `-c shell_environment_policy.include_only=[…]`): NOT live-verified — `externalAgents.codexPatService` is unset on this host (opt-in). Runner and canary injection are unit-tested only; live env-passthrough verification is still pending a configured PAT.
 
+## Native web_search is OFF by default (codex-cli 0.144.1, 2026-07-14)
+Symptom: full-access codex still can't "search the web" — it falls back to curl or fails.
+Cause: the Responses `web_search` tool is a separate opt-in; sandbox mode does not control it.
+Rule: pass `-c tools.web_search=true` — live-verified accepted on BOTH fresh `codex exec` and `resume` (unlike `-s`). Search runs model-side: it works even under a read-only sandbox and never appears as a `command_execution` item, so `audit` won't list it — searches stream as `item.*` with `item.type == "web_search"`.
+
 ## `--strict-config` validates the WHOLE config.toml, not just `-c` overrides
 Symptom: `codex exec --strict-config …` dies before running with e.g. `Error loading config.toml: …:9:1: unknown configuration field 'mcp_servers.pencil.type'`. codex never starts; nothing escalates.
 Cause: `--strict-config` strict-validates the entire merged config, including the user's pre-existing `~/.codex/config.toml`. Any field this CLI version rejects (here an MCP-server `type = "stdio"` key) fails the whole load. The spec assumed `--strict-config` only guards our `-c` keys; it does not.
