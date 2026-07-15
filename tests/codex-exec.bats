@@ -95,6 +95,61 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [[ "$output" == *"-s danger-full-access"* && "$output" == *"-m gpt-5.6-sol"* && "$output" == *"-c tools.web_search=true"* && "$output" == *"-o $TMP/r1.md"* && "$output" == *"--json"* ]]
 }
 
+@test "run: generated runner announces name, sandbox, and model first" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name codex-gpt-5.6-sol--82-1 --model gpt-5.6-sol --out '$TMP/a1.md' --prompt-file '$TMP/p.txt' --sandbox workspace-write --visibility window"
+  [ "$status" -eq 0 ]
+  run "$TMP/a1.run.sh"
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = 'Spawning [codex-gpt-5.6-sol--82-1 sandbox=workspace-write model=gpt-5.6-sol]' ]
+}
+
+@test "run: spawn announcement includes workdir when set" {
+  use_cfg
+  mkdir "$TMP/wt"
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name agent-82 --model model-82 --out '$TMP/a2.md' --prompt-file '$TMP/p.txt' --workdir '$TMP/wt' --visibility window"
+  [ "$status" -eq 0 ]
+  run "$TMP/a2.run.sh"
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = "Spawning [agent-82 sandbox=danger-full-access model=model-82 workdir=$TMP/wt]" ]
+}
+
+@test "run: spawn metadata color is deterministic and excludes reserved colors" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name agent-alpha --model m --out '$TMP/c1.md' --prompt-file '$TMP/p.txt' --visibility window"
+  [ "$status" -eq 0 ]
+  color1="$(sed -n 's/^spawn=agent-alpha sandbox=danger-full-access color=//p' <<<"$output")"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name agent-alpha --model m --out '$TMP/c2.md' --prompt-file '$TMP/p.txt' --visibility window"
+  [ "$status" -eq 0 ]
+  color2="$(sed -n 's/^spawn=agent-alpha sandbox=danger-full-access color=//p' <<<"$output")"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name agent-beta --model m --out '$TMP/c3.md' --prompt-file '$TMP/p.txt' --visibility window"
+  [ "$status" -eq 0 ]
+  color3="$(sed -n 's/^spawn=agent-beta sandbox=danger-full-access color=//p' <<<"$output")"
+  case "$color1:$color2:$color3" in
+    34:34:33|34:34:35|34:34:36|35:35:34|35:35:33|35:35:36|33:33:34|33:33:35|33:33:36|36:36:34|36:36:35|36:36:33) true ;;
+    *) false ;;
+  esac
+}
+
+@test "run: spawn announcement uses the agent color on a tty and stays out of log" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name agent-alpha --model m --out '$TMP/t1.md' --prompt-file '$TMP/p.txt' --visibility window"
+  [ "$status" -eq 0 ]
+  color="$(sed -n 's/^spawn=agent-alpha sandbox=danger-full-access color=//p' <<<"$output")"
+  [ "$(grep -cF "codex-exec.sh render $TMP/t1.log $TMP/t1.md $color" "$TMP/t1.run.sh")" -eq 1 ]
+  run script -q /dev/null "$TMP/t1.run.sh"
+  [ "$status" -eq 0 ]
+  tty_output="$output"
+  expected="$(printf '\033[%smSpawning [agent-alpha sandbox=danger-full-access model=m]\033[0m' "$color")"
+  run bash -c "LC_ALL=C grep -q \$'\x1b' '$TMP/t1.log'"
+  [ "$status" -ne 0 ]
+  [ "$tty_output" != "${tty_output#*"$expected"}" ]
+}
+
 @test "run tmux mode: no right split creates targeted horizontal split" {
   use_cfg
   printf 'q\n' > "$TMP/p.txt"
@@ -277,6 +332,29 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [ "$(grep -cF 'garbage not json' "$TMP/o.log")" = "1" ]
   run bash -c "LC_ALL=C grep -q \$'\x1b' '$TMP/o.log'"
   [ "$status" -ne 0 ]
+}
+
+@test "render: missing color argument defaults main output to cyan on a tty" {
+  printf '%s\n' \
+    '{"type":"item.completed","item":{"type":"agent_message","text":"default color"}}' \
+    > "$TMP/default-color.jsonl"
+  run script -q /dev/null bash -c "'$SCRIPTS/codex-exec.sh' render '$TMP/default-color.log' < '$TMP/default-color.jsonl'"
+  [ "$status" -eq 0 ]
+  expected="$(printf '\033[36mdefault color\033[0m')"
+  [ "$output" != "${output#*"$expected"}" ]
+}
+
+@test "render: third argument sets command and agent-message color on a tty" {
+  printf '%s\n' \
+    '{"type":"item.started","item":{"type":"command_execution","command":"echo hi"}}' \
+    '{"type":"item.completed","item":{"type":"agent_message","text":"custom color"}}' \
+    > "$TMP/custom-color.jsonl"
+  run script -q /dev/null bash -c "'$SCRIPTS/codex-exec.sh' render '$TMP/custom-color.log' '' 35 < '$TMP/custom-color.jsonl'"
+  [ "$status" -eq 0 ]
+  command_expected="$(printf '\033[35m$ echo hi \033[0m')"
+  message_expected="$(printf '\033[35mcustom color\033[0m')"
+  [ "$output" != "${output#*"$command_expected"}" ]
+  [ "$output" != "${output#*"$message_expected"}" ]
 }
 
 @test "render: command shown once, output hidden, failure marked red-path" {

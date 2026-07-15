@@ -12,7 +12,7 @@ usage() {
     echo "       codex-exec.sh session-id <log>"
     echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--visibility <mode>] [--sandbox read-only|workspace-write|danger-full-access (default: danger-full-access)] [--workdir <dir>] [--output-schema <f>]"
     echo "       codex-exec.sh audit <log>"
-    echo "       codex-exec.sh render <log> <report> (internal: codex --json stream on stdin)"
+    echo "       codex-exec.sh render <log> <report> [color-code] (internal: codex --json stream on stdin)"
   } >&2
   exit 2
 }
@@ -66,12 +66,24 @@ session_id() {
   grep -m1 '^session id: ' "$1" | awk '{print $3}' | grep . || die "no session id in $1"
 }
 
+agent_color() {
+  local checksum
+  checksum="$(printf '%s' "$1" | cksum)"
+  checksum="${checksum%% *}"
+  case $((checksum % 4)) in
+    0) echo 34 ;;
+    1) echo 35 ;;
+    2) echo 33 ;;
+    3) echo 36 ;;
+  esac
+}
+
 render_stream() {
   set +e   # a display bug must never SIGPIPE-kill the codex run
-  local log="${1:?}" report="${2:-}"
+  local log="${1:?}" report="${2:-}" color="${3:-36}"
   local B="" R="" G="" C="" D="" N=""
   if [[ -t 1 ]]; then
-    B=$'\e[1m'; R=$'\e[31m'; G=$'\e[32m'; C=$'\e[36m'; D=$'\e[2m'; N=$'\e[0m'
+    B=$'\e[1m'; R=$'\e[31m'; G=$'\e[32m'; C=$'\e['"$color"m; D=$'\e[2m'; N=$'\e[0m'
   fi
   : > "$log"
   local line type itype txt cmd rc
@@ -162,7 +174,8 @@ run_codex() {
   if [[ -z "$vis" ]]; then vis="$(detect)"; fi
   if [[ "$vis" == "unset" ]]; then vis=background; fi
 
-  local log="${out%.md}.log" sentinel="$out.done" runner="${out%.md}.run.sh"
+  local log="${out%.md}.log" sentinel="$out.done" runner="${out%.md}.run.sh" color
+  color="$(agent_color "$name")"
   rm -f "$out" "$sentinel"
   # web_search is off by default; -c form works on fresh AND resume (live-verified 0.144.1)
   local search="-c tools.web_search=true"
@@ -171,16 +184,21 @@ run_codex() {
   if [[ -n "$resume" ]]; then codex_cmd="codex exec resume $resume $search"; sandbox="-c 'sandbox_mode=\"$sandbox_mode\"'"; fi
   local schema_flag=""
   [[ -n "$output_schema" ]] && schema_flag="--output-schema \"$output_schema\""
-  local cd_line=""
+  local cd_line="" workdir_field=""
   [[ -n "$workdir" ]] && cd_line="cd $workdir || { echo 1 > $sentinel; exit 1; }"
+  [[ -n "$workdir" ]] && workdir_field=" workdir=$workdir"
   cat > "$runner" <<EOF
 #!/usr/bin/env bash
-echo "=== $name ==="
+if [[ -t 1 ]]; then
+  printf '\e[${color}mSpawning [$name sandbox=$sandbox_mode model=$model$workdir_field]\e[0m\n'
+else
+  printf 'Spawning [$name sandbox=$sandbox_mode model=$model$workdir_field]\n'
+fi
 $cd_line
 printf '\e[2m--- prompt ---\n'
 cat $prompt_file
 printf -- '--------------\e[0m\n'
-$codex_cmd $sandbox $schema_flag --json -o $out - < $prompt_file 2>&1 | $SCRIPT_DIR/codex-exec.sh render $log $out
+$codex_cmd $sandbox $schema_flag --json -o $out - < $prompt_file 2>&1 | $SCRIPT_DIR/codex-exec.sh render $log $out $color
 echo "\${PIPESTATUS[0]}" > $sentinel
 EOF
   chmod +x "$runner"
@@ -219,7 +237,8 @@ EOF
       nohup "$runner" >/dev/null 2>&1 & ;;
     *) die "unknown visibility: $vis" ;;
   esac
-  printf 'report=%s\nlog=%s\nsentinel=%s\nmode=%s\n' "$out" "$log" "$sentinel" "$vis"
+  printf 'spawn=%s sandbox=%s color=%s\nreport=%s\nlog=%s\nsentinel=%s\nmode=%s\n' \
+    "$name" "$sandbox_mode" "$color" "$out" "$log" "$sentinel" "$vis"
 }
 
 case "${1:-}" in
