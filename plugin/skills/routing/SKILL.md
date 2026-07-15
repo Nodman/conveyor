@@ -39,7 +39,10 @@ tell the user.
 3. Classify: judgment / taste / code / legwork / review.
 4. Quality floors: judgment → strongest model, main session, never delegated
    (main session below the floor → delegate judgment UP, don't assume the
-   director is strongest). Taste ≥7 — Fable decides, Opus executes settled
+   director is strongest). Spec/plan judge gates (spec-judge, plan-judge)
+   are delegated judgment → Fable, or 5.6-sol when cross-family independence
+   from the artifact's author applies; Opus is not a judge model.
+   Taste ≥7 — Fable decides, Opus executes settled
    design. Complex code → highest-intel implementer: 5.6-sol or Opus (Opus
    when harness integration or repo-law judgment). Routine clear-spec
    code → 5.6-sol or 5.5. Exploration,

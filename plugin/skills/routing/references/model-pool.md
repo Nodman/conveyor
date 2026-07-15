@@ -7,7 +7,7 @@ Scores 1-10, higher better.
 | model | runner | intel | taste | cost | control | notes |
 |---|---|---|---|---|---|---|
 | claude-fable-5 | Agent tool | 9 | 9 | 2 | native 10 | director; judgment floor |
-| claude-opus-4-8 | Agent tool | 7 | 8 | 4 | native 10 | harness/repo-law implementer |
+| claude-opus-4-8 | Agent tool | 7 | 8 | 4 | native 10 | harness/repo-law implementer; not a judge |
 | claude-sonnet-5 | Agent tool | 5 | 6 | 5 | native 10 | legwork, fetch docs, etc |
 | codex-gpt-5.6-sol | codex CLI | 8 | 8 | 6 | external 5 | ≈ fable at code but cheaper |
 | codex-gpt-5.5 | codex CLI | 7 | 5 | 7 | external 5 | ≈ opus 4.8 at code but cheaper |
