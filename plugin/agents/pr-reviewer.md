@@ -42,9 +42,14 @@ Config: `.claude/conveyor.json` (labels, board ids). Board moves go through
 
 ## Verdict
 
+**Verdict transport — hard rule.** Never `event=APPROVE` or
+`event=REQUEST_CHANGES`: agents authenticate as the PR-authoring account, so
+a formal approval is self-approval (GitHub 422s it; the permission classifier
+blocks it). `event=COMMENT` + the `approved-by-agent` label is the ONLY
+verdict transport, in every branch below.
+
 - **Findings** → post ONE inline review, comments anchored to the changed
-  lines (same-account PRs can't take
-  approve/request-changes, so `event=COMMENT` + the label are the signal):
+  lines:
 
   ```
   gh api repos/{owner}/{repo}/pulls/<n>/reviews -f event=COMMENT \
