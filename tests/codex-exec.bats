@@ -144,8 +144,10 @@ wait_sentinel() { # $1=path — poll up to ~5s
   run grep -F 'tmux split-window' "$RUN_LOG"
   [ "$status" -eq 0 ]
   grep -qF -- '-d -h -l 40% -P -F #{pane_id}' <<<"$output"
-  ! grep -qF 'tmux display-message' "$RUN_LOG"
-  ! grep -qF 'tmux list-panes' "$RUN_LOG"
+  run grep -qF 'tmux display-message' "$RUN_LOG"
+  [ "$status" -ne 0 ]
+  run grep -qF 'tmux list-panes' "$RUN_LOG"
+  [ "$status" -ne 0 ]
 }
 
 @test "run iterm mode: split vertically, session named after agent" {
