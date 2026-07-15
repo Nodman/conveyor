@@ -6,6 +6,30 @@ use_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/conveyo
 # every invocation scrubs terminal vars so the dev's real tmux/iTerm doesn't leak in
 CX="env -u TMUX -u TMUX_PANE LC_TERMINAL= TERM_PROGRAM="
 
+run_pty() {
+  local command="${1:?}"
+  if script --version >/dev/null 2>&1; then
+    run script -qec "$command" /dev/null
+  else
+    run script -q /dev/null bash -c "$command"
+  fi
+}
+
+@test "run_pty: util-linux syntax propagates command status" {
+  script() {
+    if [ "${1:-}" = "--version" ]; then return 0; fi
+    [ "$#" -eq 3 ] || return 91
+    [ "$1" = "-qec" ] || return 92
+    [ "$3" = "/dev/null" ] || return 93
+    bash -c "$2"
+  }
+  run_pty "printf portable"
+  [ "$status" -eq 0 ]
+  [ "$output" = "portable" ]
+  run_pty "exit 7"
+  [ "$status" -eq 7 ]
+}
+
 @test "detect: TMUX set wins" {
   use_cfg
   run bash -c "cd '$TMP' && env TMUX=/tmp/sock LC_TERMINAL= TERM_PROGRAM= '$SCRIPTS/codex-exec.sh' detect"
@@ -141,7 +165,7 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [ "$status" -eq 0 ]
   color="$(sed -n 's/^spawn=agent-alpha sandbox=danger-full-access color=//p' <<<"$output")"
   [ "$(grep -cF "codex-exec.sh render $TMP/t1.log $TMP/t1.md $color" "$TMP/t1.run.sh")" -eq 1 ]
-  run script -q /dev/null "$TMP/t1.run.sh"
+  run_pty "'$TMP/t1.run.sh'"
   [ "$status" -eq 0 ]
   tty_output="$output"
   expected="$(printf '\033[%smSpawning [agent-alpha sandbox=danger-full-access model=m]\033[0m' "$color")"
@@ -338,7 +362,7 @@ wait_sentinel() { # $1=path — poll up to ~5s
   printf '%s\n' \
     '{"type":"item.completed","item":{"type":"agent_message","text":"default color"}}' \
     > "$TMP/default-color.jsonl"
-  run script -q /dev/null bash -c "'$SCRIPTS/codex-exec.sh' render '$TMP/default-color.log' < '$TMP/default-color.jsonl'"
+  run_pty "'$SCRIPTS/codex-exec.sh' render '$TMP/default-color.log' < '$TMP/default-color.jsonl'"
   [ "$status" -eq 0 ]
   expected="$(printf '\033[36mdefault color\033[0m')"
   [ "$output" != "${output#*"$expected"}" ]
@@ -349,7 +373,7 @@ wait_sentinel() { # $1=path — poll up to ~5s
     '{"type":"item.started","item":{"type":"command_execution","command":"echo hi"}}' \
     '{"type":"item.completed","item":{"type":"agent_message","text":"custom color"}}' \
     > "$TMP/custom-color.jsonl"
-  run script -q /dev/null bash -c "'$SCRIPTS/codex-exec.sh' render '$TMP/custom-color.log' '' 35 < '$TMP/custom-color.jsonl'"
+  run_pty "'$SCRIPTS/codex-exec.sh' render '$TMP/custom-color.log' '' 35 < '$TMP/custom-color.jsonl'"
   [ "$status" -eq 0 ]
   command_expected="$(printf '\033[35m$ echo hi \033[0m')"
   message_expected="$(printf '\033[35mcustom color\033[0m')"
