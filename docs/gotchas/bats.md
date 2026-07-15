@@ -9,3 +9,8 @@ Rule: a test's ONLY gating assertion is its last command — put the decisive `[
 Symptom: a test intended to exercise the non-tmux fallback unexpectedly targets the developer's live pane.
 Cause: tmux exports `TMUX_PANE` separately, and `env -u TMUX` leaves it intact.
 Rule: terminal-isolated tests must unset both `TMUX` and `TMUX_PANE`.
+
+## `script` pty syntax differs between macOS/BSD and Linux
+Symptom: pty tests pass on macOS but fail in Ubuntu CI before running the command.
+Cause: BSD uses `script -q /dev/null command`; util-linux requires `script -qec "command" /dev/null`.
+Rule: detect util-linux with `script --version`; use its `-e` flag to propagate command failures.

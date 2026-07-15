@@ -9,4 +9,5 @@ Full entries live in `<category>.md` files beside this one, added via the convey
 - github-api: Projects item-list lags item-add
 - bats: Mid-test `[[ ]]` assertion failures do not fail the test
 - bats: Clearing `TMUX` alone still leaks the host pane target
+- bats: `script` pty syntax differs between macOS/BSD and Linux
 - worktrees: Shell cwd persists — a `cd` into a worktree leaks into later commands
