@@ -1,2 +1,40 @@
 #!/usr/bin/env bash
 echo "tmux $*" >> "${RUN_LOG:?}"
+
+command="${1:-}"
+shift || true
+case "$command" in
+  display-message)
+    [[ "$#" -eq 4 && "$1" == "-p" && "$2" == "-t" && -n "$3" && "$4" == '#{window_id}' ]] || exit 2
+    printf '%s\n' "${MOCK_TMUX_WINDOW_ID:-@7}"
+    ;;
+  list-panes)
+    [[ "$#" -eq 4 && "$1" == "-t" && -n "$2" && "$3" == "-F" && "$4" == '#{pane_id} #{pane_at_right}' ]] || exit 2
+    case "${MOCK_TMUX_LAYOUT:-no-split}" in
+      no-split)
+        printf '%s 1\n' "${TMUX_PANE:-%1}"
+        ;;
+      split-exists)
+        printf '%s 0\n' "${TMUX_PANE:-%1}"
+        printf '%%2 1\n%%3 1\n'
+        ;;
+      *) exit 2 ;;
+    esac
+    ;;
+  split-window)
+    if [[ "$#" -eq 10 && "$1" == "-d" && "$2" == "-h" && "$3" == "-l" && "$4" == "40%" && "$5" == "-t" && -n "$6" && "$7" == "-P" && "$8" == "-F" && "$9" == '#{pane_id}' ]]; then
+      :
+    elif [[ "$#" -eq 8 && "$1" == "-d" && "$2" == "-v" && "$3" == "-t" && -n "$4" && "$5" == "-P" && "$6" == "-F" && "$7" == '#{pane_id}' ]]; then
+      :
+    elif [[ "$#" -eq 8 && "$1" == "-d" && "$2" == "-h" && "$3" == "-l" && "$4" == "40%" && "$5" == "-P" && "$6" == "-F" && "$7" == '#{pane_id}' ]]; then
+      :
+    else
+      exit 2
+    fi
+    printf '%s\n' "${MOCK_TMUX_NEW_PANE:-%99}"
+    ;;
+  select-pane)
+    [[ "$#" -eq 4 && "$1" == "-t" && "$3" == "-T" ]] || exit 2
+    ;;
+  *) exit 2 ;;
+esac

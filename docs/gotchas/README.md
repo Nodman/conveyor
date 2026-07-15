@@ -8,4 +8,5 @@ Full entries live in `<category>.md` files beside this one, added via the convey
 - codex: Escalated commands are shell-wrapped; the "never" denial string is not universal
 - github-api: Projects item-list lags item-add
 - bats: Mid-test `[[ ]]` assertion failures do not fail the test
+- bats: Clearing `TMUX` alone still leaks the host pane target
 - worktrees: Shell cwd persists — a `cd` into a worktree leaks into later commands

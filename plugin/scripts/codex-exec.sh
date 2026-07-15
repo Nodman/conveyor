@@ -135,6 +135,7 @@ render_stream() {
 run_codex() {
   # default per DECISIONS.md 2026-07-13 yolo ruling: codex runs unsandboxed
   local name="" model="" out="" resume="" prompt_file="" vis="" sandbox_mode="danger-full-access" workdir="" pane=""
+  local tmux_target="" tmux_window="" right_pane="" candidate="" at_right=""
   local output_schema=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -187,7 +188,22 @@ EOF
   case "$vis" in
     tmux)
       echo 'sleep 10' >> "$runner"   # pane lingers so the human can read the tail
-      pane="$(tmux split-window -d -h -l 40% -P -F '#{pane_id}' "$runner")"
+      if [[ -n "${TMUX_PANE:-}" ]]; then
+        tmux_target="$TMUX_PANE"
+        tmux_window="$(tmux display-message -p -t "$tmux_target" '#{window_id}')"
+        while IFS=' ' read -r candidate at_right; do
+          if [[ "$candidate" != "$tmux_target" && "$at_right" == 1 ]]; then
+            right_pane="$candidate"
+          fi
+        done < <(tmux list-panes -t "$tmux_window" -F '#{pane_id} #{pane_at_right}')
+      fi
+      if [[ -n "$right_pane" ]]; then
+        pane="$(tmux split-window -d -v -t "$right_pane" -P -F '#{pane_id}' "$runner")"
+      elif [[ -n "$tmux_target" ]]; then
+        pane="$(tmux split-window -d -h -l 40% -t "$tmux_target" -P -F '#{pane_id}' "$runner")"
+      else
+        pane="$(tmux split-window -d -h -l 40% -P -F '#{pane_id}' "$runner")"
+      fi
       tmux select-pane -t "$pane" -T "$name" || true ;;
     iterm)
       osascript \
