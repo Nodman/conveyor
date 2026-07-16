@@ -6,6 +6,7 @@ load helpers/env
 seed_tree() {
   mkdir -p "$TMP/.claude/skills/running-tests" "$TMP/.claude/skills/running-the-app"
   printf 'proj skill\n' > "$TMP/.claude/skills/running-tests/SKILL.md"
+  printf 'app skill\n' > "$TMP/.claude/skills/running-the-app/SKILL.md"
   printf 'node_modules/\n.agents/\n' > "$TMP/.gitignore"
 }
 
@@ -19,7 +20,7 @@ seed_tree() {
   done
   grep -qF 'synced .agents/skills/gotchas' <<<"$output"
   diff -rq "$SCRIPTS/../skills/gotchas" "$TMP/.agents/skills/gotchas"
-  ! grep -qxF '.agents/' "$TMP/.gitignore"
+  [ "$(grep -cxF '.agents/' "$TMP/.gitignore")" -eq 0 ]
   grep -qxF 'node_modules/' "$TMP/.gitignore"
 }
 
@@ -39,7 +40,7 @@ seed_tree() {
   run bash -c "cd '$TMP' && '$SCRIPTS/link-agent-skills.sh'"
   [ "$status" -eq 0 ]
   grep -qF 'v2' "$TMP/.agents/skills/running-tests/SKILL.md"
-  ! grep -qF 'hand edit' "$TMP/.agents/skills/running-the-app/SKILL.md"
+  [ "$(grep -cF 'hand edit' "$TMP/.agents/skills/running-the-app/SKILL.md")" -eq 0 ]
 }
 
 @test "old symlink replaced by a real copy" {
