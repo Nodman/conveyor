@@ -38,19 +38,19 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   [[ "$output" == *"skip docs/DECISIONS.md"* ]]
 }
 
-@test "scaffold adds .claude/worktrees/ to .gitignore" {
+@test "scaffold adds .worktrees/ to .gitignore" {
   seed_cfg
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh'"
   [ "$status" -eq 0 ]
-  grep -qxF '.claude/worktrees/' "$TMP/.gitignore"
+  grep -qxF '.worktrees/' "$TMP/.gitignore"
 }
 
 @test "scaffold gitignore append is idempotent and preserves entries" {
   seed_cfg
-  printf 'node_modules/\n.claude/worktrees/\n' > "$TMP/.gitignore"
+  printf 'node_modules/\n.worktrees/\n' > "$TMP/.gitignore"
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh'"
   [ "$status" -eq 0 ]
-  [ "$(grep -cxF '.claude/worktrees/' "$TMP/.gitignore")" -eq 1 ]
+  [ "$(grep -cxF '.worktrees/' "$TMP/.gitignore")" -eq 1 ]
   grep -qxF 'node_modules/' "$TMP/.gitignore"
   [[ "$output" == *"skip .gitignore"* ]]
 }
@@ -61,7 +61,7 @@ seed_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/convey
   run bash -c "cd '$TMP' && '$SCRIPTS/scaffold.sh'"
   [ "$status" -eq 0 ]
   grep -qxF 'node_modules/' "$TMP/.gitignore"
-  grep -qxF '.claude/worktrees/' "$TMP/.gitignore"
+  grep -qxF '.worktrees/' "$TMP/.gitignore"
 }
 
 @test "scaffold --dry-run does not write .gitignore" {

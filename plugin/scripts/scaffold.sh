@@ -76,13 +76,13 @@ fi
 
 # 6. Gitignore the agent worktree dir — append once.
 gi=.gitignore
-if [[ -f "$gi" ]] && grep -qxF '.claude/worktrees/' "$gi"; then
-  echo "scaffold: skip $gi (.claude/worktrees/ present)"
+if [[ -f "$gi" ]] && grep -qxF '.worktrees/' "$gi"; then
+  echo "scaffold: skip $gi (.worktrees/ present)"
 else
-  say "add .claude/worktrees/ to $gi"
+  say "add .worktrees/ to $gi"
   if [[ $dry -eq 0 ]]; then
     if [[ -s "$gi" && -n "$(tail -c1 "$gi")" ]]; then printf '\n' >> "$gi"; fi
-    printf '.claude/worktrees/\n' >> "$gi"
+    printf '.worktrees/\n' >> "$gi"
   fi
 fi
 
