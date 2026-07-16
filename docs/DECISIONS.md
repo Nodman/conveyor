@@ -90,3 +90,12 @@ Each entry: `## YYYY-MM-DD — <topic>` followed by bullets — chose X over Y, 
   a harder gate than a mode conditional (drift/compaction can lose a flag).
 - The only shared fork is executing-tasks' Auto-merge step, gated by the
   "declared auto run" sentence in the lead's spawn prompt.
+
+## 2026-07-16 — Agent skills are committed copies
+
+- Copy-and-commit replaces the symlink + gitignore design.
+  `.agents/skills/` is contributor-committable.
+- Plugin skills and `.claude/skills/` remain the sources of truth. Their
+  content wins when copies drift.
+- Committed copies exist in every worktree, so the per-worktree relink step
+  is retired.
