@@ -47,7 +47,7 @@ compatible runner MUST provide:
 - Report file (the deliverable) + log file + sentinel file whose content
   carries the exit code, touched after exit in every visibility mode.
 - Standard report shape: `--output-schema plugin/config/report.schema.json`
-  (fields: verdict, privileged_actions, denials, commit_shas, tests).
+  (fields: verdict, message, privileged_actions, denials, commit_shas, tests).
 - Post-run check: `audit <log>` lists the run's privileged commands.
 - Session-id capture from the run header (for resume; never `--last`).
 - Explicit timeout + background poll on the sentinel.
