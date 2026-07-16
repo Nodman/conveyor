@@ -99,7 +99,7 @@ render_stream() {
     B=$'\e[1m'; R=$'\e[31m'; G=$'\e[32m'; C=$'\e['"$color"m; D=$'\e[2m'; N=$'\e[0m'
   fi
   : > "$log"
-  local line type itype txt cmd rc
+  local line type itype txt cmd rc rendered
   while IFS= read -r line; do
     printf '%s\n' "$line" >> "$log"
     if ! jq -e . >/dev/null 2>&1 <<<"$line"; then
@@ -135,8 +135,8 @@ render_stream() {
             if [[ "$type" == item.completed ]]; then
               txt=$(jq -r '.item.text // empty' <<<"$line" 2>/dev/null)
               if [[ -n "$txt" ]]; then
-                if jq -e '.verdict? // empty | length > 0' >/dev/null 2>&1 <<<"$txt" && render_report "$txt"; then
-                  printf '\n'
+                if jq -e '.verdict? // empty | length > 0' >/dev/null 2>&1 <<<"$txt" && rendered=$(render_report "$txt"); then
+                  printf '%s\n\n' "$rendered"
                 else
                   printf '%s%s%s\n\n' "$C" "$txt" "$N"
                 fi
