@@ -185,6 +185,13 @@ setup_drift() { use_cfg; printf '<!-- conveyor:begin -->\n' > "$TMP/CLAUDE.md"; 
   [[ "$output" == *"orphaned worktree /repo/.claude/worktrees/fix-9 spaced"* ]]
 }
 
+@test "R10 flags orphans under the new .worktrees/ dir too" {
+  use_cfg
+  run_doctor doctor-worktree-orphan
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"orphaned worktree /repo/.worktrees/fix-10-stale"* ]]
+}
+
 # ---- pluginVersion stamp ---------------------------------------------------
 
 @test "clean run stamps pluginVersion and preserves other keys" {
