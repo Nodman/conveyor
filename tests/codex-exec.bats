@@ -470,3 +470,26 @@ wait_sentinel() { # $1=path — poll up to ~5s
   run jq -e '.properties.message.type == "string"' "$schema"
   [ "$status" -eq 0 ]
 }
+
+@test "render: schema report pretty-printed, default FG, none for empty arrays" {
+  local rpt='{"verdict":"comment","message":"Plan holds; two nits.","privileged_actions":[{"command":"gh pr view 12","exit_code":0}],"denials":[],"commit_shas":[],"tests":["bats tests/ — pass"]}'
+  jq -nc --arg t "$rpt" '{"type":"item.completed","item":{"type":"agent_message","text":$t}}' > "$TMP/rp.jsonl"
+  run_pty "'$SCRIPTS/codex-exec.sh' render '$TMP/rp.log' '' 35 < '$TMP/rp.jsonl'"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'Plan holds; two nits.'* ]]
+  [[ "$output" == *'verdict: comment'* ]]
+  [[ "$output" == *'tests: bats tests/ — pass'* ]]
+  [[ "$output" == *'privileged: gh pr view 12 (exit 0)'* ]]
+  [[ "$output" == *'commits: none'* && "$output" == *'denials: none'* ]]
+  colored="$(printf '\033[35mPlan holds')"
+  [ "$output" = "${output#*"$colored"}" ]   # message NOT in agent color
+  [[ "$output" != *'"verdict"'* ]]          # raw JSON not shown
+}
+
+@test "render: JSON without verdict falls back to raw agent-color path" {
+  jq -nc '{"type":"item.completed","item":{"type":"agent_message","text":"{\"note\":\"just json\"}"}}' > "$TMP/rf.jsonl"
+  run_pty "'$SCRIPTS/codex-exec.sh' render '$TMP/rf.log' '' 35 < '$TMP/rf.jsonl'"
+  [ "$status" -eq 0 ]
+  raw_expected="$(printf '\033[35m{"note":"just json"}\033[0m')"
+  [ "$output" != "${output#*"$raw_expected"}" ]
+}
