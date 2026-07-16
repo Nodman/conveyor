@@ -460,3 +460,13 @@ wait_sentinel() { # $1=path — poll up to ~5s
   grep -qF 'core.hooksPath=/dev/null commit' <<<"$output"
   ! grep -qF 'ls -la' <<<"$output"
 }
+
+@test "report schema: six required fields, every property described" {
+  local schema="$SCRIPTS/../config/report.schema.json"
+  run jq -e '.required == ["verdict","message","privileged_actions","denials","commit_shas","tests"]' "$schema"
+  [ "$status" -eq 0 ]
+  run jq -e '[.properties[] | .description // ""] | all(length > 0)' "$schema"
+  [ "$status" -eq 0 ]
+  run jq -e '.properties.message.type == "string"' "$schema"
+  [ "$status" -eq 0 ]
+}
