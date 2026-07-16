@@ -26,8 +26,9 @@ re-run only when something looks wrong.
      never write permissions silently.
    - `link-agent-skills.sh check` prints DRIFT → run
      `${CLAUDE_PLUGIN_ROOT}/scripts/link-agent-skills.sh` without asking
-     (local symlinks in a gitignored dir). Codex can't see the TDD or
-     project skills until they're linked into `.agents/skills/`.
+     (apply mode). The resulting changes are ordinary dirty files that ride
+     with the next branch/PR, like the pluginVersion stamp. Codex can't see
+     the TDD or project skills until they're synced into `.agents/skills/`.
    - `codex-exec.sh detect` prints `unset` → flag: council/external agents
      will interrupt to ask on first use. Fix: `codex-exec.sh set-visibility
      <window|background>` — ask the user which, never write config silently.

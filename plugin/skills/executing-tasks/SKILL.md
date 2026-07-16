@@ -46,11 +46,8 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    `model:` explicitly. Claude executors run tests and commit; they never open
    PRs.
 
-   Codex lane (route = codex): first run
-   `${CLAUDE_PLUGIN_ROOT}/scripts/link-agent-skills.sh` from the worktree
-   root — codex resolves `.agents/skills` per root, and a worktree is its
-   own root; without this codex can't see the TDD or project skills. Spawn
-   via `${CLAUDE_PLUGIN_ROOT}/scripts/codex-exec.sh
+   Codex lane (route = codex): spawn via
+   `${CLAUDE_PLUGIN_ROOT}/scripts/codex-exec.sh
    run --workdir <issue worktree> --name
    codex-<model>--<issue>-<n> --model <model> --out <report> --output-schema
    ${CLAUDE_PLUGIN_ROOT}/config/report.schema.json --prompt-file <f>`; the
