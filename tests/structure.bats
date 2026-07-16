@@ -62,11 +62,10 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
 
 @test "executing-tasks Setup states the per-issue worktree policy" {
   f="$REPO/plugin/skills/executing-tasks/SKILL.md"
-  grep -qF -- 'git fetch origin' "$f"
-  grep -qF -- 'refs/remotes/origin/HEAD' "$f"
-  grep -qF -- 'git check-ignore' "$f"
-  grep -qF -- 'git worktree add .claude/worktrees/' "$f"
+  grep -qF -- 'plugin/skills/worktrees/SKILL.md' "$f"
+  grep -qF -- '.worktrees/<branch>' "$f"
   grep -qF -- 'git worktree remove' "$f"
+  ! grep -qF -- '.claude/worktrees/' "$f"
 }
 
 @test "judge agents exist, prefix their comments, and never edit" {
