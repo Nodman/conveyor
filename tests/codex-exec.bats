@@ -460,3 +460,47 @@ wait_sentinel() { # $1=path — poll up to ~5s
   grep -qF 'core.hooksPath=/dev/null commit' <<<"$output"
   ! grep -qF 'ls -la' <<<"$output"
 }
+
+@test "report schema: six required fields, every property described" {
+  local schema="$SCRIPTS/../config/report.schema.json"
+  run jq -e '.required == ["verdict","message","privileged_actions","denials","commit_shas","tests"]' "$schema"
+  [ "$status" -eq 0 ]
+  run jq -e '[.properties[] | .description // ""] | all(length > 0)' "$schema"
+  [ "$status" -eq 0 ]
+  run jq -e '.properties.message.type == "string"' "$schema"
+  [ "$status" -eq 0 ]
+}
+
+@test "render: schema report pretty-printed, default FG, none for empty arrays" {
+  local rpt='{"verdict":"comment","message":"Plan holds; two nits.","privileged_actions":[{"command":"gh pr view 12","exit_code":0}],"denials":[],"commit_shas":[],"tests":["bats tests/ — pass"]}'
+  jq -nc --arg t "$rpt" '{"type":"item.completed","item":{"type":"agent_message","text":$t}}' > "$TMP/rp.jsonl"
+  run_pty "'$SCRIPTS/codex-exec.sh' render '$TMP/rp.log' '' 35 < '$TMP/rp.jsonl'"
+  [ "$status" -eq 0 ]
+  grep -qF 'Plan holds; two nits.' <<<"$output"
+  grep -qF 'verdict: comment' <<<"$output"
+  grep -qF 'tests: bats tests/ — pass' <<<"$output"
+  grep -qF 'privileged: gh pr view 12 (exit 0)' <<<"$output"
+  grep -qF 'commits: none' <<<"$output"
+  grep -qF 'denials: none' <<<"$output"
+  colored="$(printf '\033[35mPlan holds')"
+  [ "$output" = "${output#*"$colored"}" ]   # message NOT in agent color
+  ! grep -qF '"verdict"' <<<"$output"        # raw JSON not shown
+}
+
+@test "render: JSON without verdict falls back to raw agent-color path" {
+  jq -nc '{"type":"item.completed","item":{"type":"agent_message","text":"{\"note\":\"just json\"}"}}' > "$TMP/rf.jsonl"
+  run_pty "'$SCRIPTS/codex-exec.sh' render '$TMP/rf.log' '' 35 < '$TMP/rf.jsonl'"
+  [ "$status" -eq 0 ]
+  raw_expected="$(printf '\033[35m{"note":"just json"}\033[0m')"
+  [ "$output" != "${output#*"$raw_expected"}" ]
+}
+
+@test "render: report fallback is atomic when pretty-print fails" {
+  local rpt='{"verdict":"comment","message":"No partial block.","privileged_actions":[],"denials":[],"commit_shas":[],"tests":"not-an-array"}'
+  jq -nc --arg t "$rpt" '{"type":"item.completed","item":{"type":"agent_message","text":$t}}' > "$TMP/ra.jsonl"
+  run_pty "'$SCRIPTS/codex-exec.sh' render '$TMP/ra.log' '' 35 < '$TMP/ra.jsonl'"
+  [ "$status" -eq 0 ]
+  raw_expected="$(printf '\033[35m%s\033[0m' "$rpt")"
+  [ "$output" != "${output#*"$raw_expected"}" ]
+  ! grep -qF 'verdict: comment' <<<"$output"
+}

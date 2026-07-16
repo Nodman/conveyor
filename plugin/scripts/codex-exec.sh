@@ -78,6 +78,19 @@ agent_color() {
   esac
 }
 
+render_report() {
+  # default FG on purpose: report block must stand out from the agent-color wall
+  jq -er '
+    def list(f): if length == 0 then "none" else map(f) | join("; ") end;
+    (.message // empty),
+    "verdict: \(.verdict)",
+    "tests: \(.tests // [] | list(.))",
+    "commits: \(.commit_shas // [] | list(.))",
+    "privileged: \(.privileged_actions // [] | list("\(.command) (exit \(.exit_code))"))",
+    "denials: \(.denials // [] | list(.))"
+  ' <<<"$1" 2>/dev/null
+}
+
 render_stream() {
   set +e   # a display bug must never SIGPIPE-kill the codex run
   local log="${1:?}" report="${2:-}" color="${3:-36}"
@@ -86,7 +99,7 @@ render_stream() {
     B=$'\e[1m'; R=$'\e[31m'; G=$'\e[32m'; C=$'\e['"$color"m; D=$'\e[2m'; N=$'\e[0m'
   fi
   : > "$log"
-  local line type itype txt cmd rc
+  local line type itype txt cmd rc rendered
   while IFS= read -r line; do
     printf '%s\n' "$line" >> "$log"
     if ! jq -e . >/dev/null 2>&1 <<<"$line"; then
@@ -121,7 +134,13 @@ render_stream() {
           agent_message)
             if [[ "$type" == item.completed ]]; then
               txt=$(jq -r '.item.text // empty' <<<"$line" 2>/dev/null)
-              if [[ -n "$txt" ]]; then printf '%s%s%s\n\n' "$C" "$txt" "$N"; fi
+              if [[ -n "$txt" ]]; then
+                if jq -e '.verdict? // empty | length > 0' >/dev/null 2>&1 <<<"$txt" && rendered=$(render_report "$txt"); then
+                  printf '%s\n\n' "$rendered"
+                else
+                  printf '%s%s%s\n\n' "$C" "$txt" "$N"
+                fi
+              fi
             fi ;;
           reasoning)
             if [[ "$type" == item.completed ]]; then

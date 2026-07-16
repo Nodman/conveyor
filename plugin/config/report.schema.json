@@ -1,11 +1,20 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["verdict", "privileged_actions", "denials", "commit_shas", "tests"],
+  "required": ["verdict", "message", "privileged_actions", "denials", "commit_shas", "tests"],
   "properties": {
-    "verdict": { "type": "string", "enum": ["approve", "request-changes", "comment"] },
+    "verdict": {
+      "type": "string",
+      "enum": ["approve", "request-changes", "comment"],
+      "description": "Final review outcome."
+    },
+    "message": {
+      "type": "string",
+      "description": "Short human-readable summary of the run; lead with the reason for the verdict."
+    },
     "privileged_actions": {
       "type": "array",
+      "description": "Network/VCS commands actually run (gh, git push/fetch/commit, curl, ssh); empty if none.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -16,8 +25,20 @@
         }
       }
     },
-    "denials": { "type": "array", "items": { "type": "string" } },
-    "commit_shas": { "type": "array", "items": { "type": "string" } },
-    "tests": { "type": "array", "items": { "type": "string" } }
+    "denials": {
+      "type": "array",
+      "description": "Commands blocked by sandbox or policy; empty if none.",
+      "items": { "type": "string" }
+    },
+    "commit_shas": {
+      "type": "array",
+      "description": "Commits created during this run; empty if none.",
+      "items": { "type": "string" }
+    },
+    "tests": {
+      "type": "array",
+      "description": "Exact test commands run and their pass/fail result; empty if no tests were run. Never prose about what was inspected.",
+      "items": { "type": "string" }
+    }
   }
 }
