@@ -10,3 +10,6 @@ worktree /repo/.claude/worktrees/agent-tmp
 HEAD cccccccccccccccccccccccccccccccccccccccc
 branch refs/heads/agent-tmp
 
+worktree /repo/.worktrees/fix-10-stale
+HEAD dddddddddddddddddddddddddddddddddddddddd
+branch refs/heads/fix/10-stale

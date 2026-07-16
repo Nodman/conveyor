@@ -6,7 +6,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_SKILLS="$(cd "$HERE/../skills" && pwd)"
-PLUGIN_LIST=(test-driven-development systematic-debugging gotchas)
+PLUGIN_LIST=(test-driven-development systematic-debugging gotchas worktrees)
 
 ROOT="$PWD"
 DEST="$ROOT/.agents/skills"

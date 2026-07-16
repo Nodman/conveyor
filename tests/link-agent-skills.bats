@@ -14,7 +14,7 @@ seed_tree() {
   seed_tree
   run bash -c "cd '$TMP' && '$SCRIPTS/link-agent-skills.sh'"
   [ "$status" -eq 0 ]
-  for name in test-driven-development systematic-debugging gotchas running-tests running-the-app; do
+  for name in test-driven-development systematic-debugging gotchas worktrees running-tests running-the-app; do
     [ -d "$TMP/.agents/skills/$name" ]
     [ ! -L "$TMP/.agents/skills/$name" ]
   done

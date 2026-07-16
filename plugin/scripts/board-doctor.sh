@@ -134,13 +134,13 @@ else
   done
 fi
 
-# R10: orphaned worktrees — a linked worktree under .claude/worktrees/ whose branch has no open PR (advisory; local leftovers aren't board drift).
+# R10: orphaned worktrees — a linked worktree under .worktrees/ or legacy .claude/worktrees/ whose branch has no open PR (advisory; local leftovers aren't board drift).
 wt=$(git worktree list --porcelain 2>/dev/null) || wt=ERR
 if [[ "$wt" == ERR ]]; then
   echo "WARN: worktree check failed — re-run" >&2
 else
   while IFS=$'\t' read -r wpath wbranch; do
-    case "$wpath" in */.claude/worktrees/*) ;; *) continue ;; esac
+    case "$wpath" in */.worktrees/*|*/.claude/worktrees/*) ;; *) continue ;; esac
     case "${wpath##*/}" in agent-*) continue ;; esac
     [[ -n "$wbranch" ]] || continue
     short="${wbranch#refs/heads/}"

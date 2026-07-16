@@ -62,11 +62,10 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
 
 @test "executing-tasks Setup states the per-issue worktree policy" {
   f="$REPO/plugin/skills/executing-tasks/SKILL.md"
-  grep -qF -- 'git fetch origin' "$f"
-  grep -qF -- 'refs/remotes/origin/HEAD' "$f"
-  grep -qF -- 'git check-ignore' "$f"
-  grep -qF -- 'git worktree add .claude/worktrees/' "$f"
+  grep -qF -- 'plugin/skills/worktrees/SKILL.md' "$f"
+  grep -qF -- '.worktrees/<branch>' "$f"
   grep -qF -- 'git worktree remove' "$f"
+  ! grep -qF -- '.claude/worktrees/' "$f"
 }
 
 @test "judge agents exist, prefix their comments, and never edit" {
@@ -117,4 +116,22 @@ no_blockers() { # $1 = file — case-sensitive, fixed-string
   grep -qF -- 'NEVER commit' "$f"
   grep -qF -- 'rides along' "$f"
   grep -qF -- "sed 's|^origin/||'" "$f"
+}
+
+@test "worktrees skill: vendored body + conveyor declarations" {
+  f="$REPO/plugin/skills/worktrees/SKILL.md"
+  [ -f "$f" ]
+  grep -qF -- 'obra/superpowers' "$f"
+  grep -qF -- 'd00f4ad4428e99db18619e077b99340fb7158f2f' "$f"
+  grep -qF -- '.worktrees/<branch>' "$f"
+  grep -qF -- 'Verify Clean Baseline' "$f"
+  grep -qF -- 'running-tests' "$f"
+  # exactly two edit markers in the vendored body (preamble mentions the
+  # literal too — count the body only)
+  [ "$(sed -n '/^# Using Git Worktrees$/,$p' "$f" | grep -cF -- '<!-- conveyor edit -->')" -eq 2 ]
+  # precedence rule opens the declarations section
+  grep -A3 -F -- '## Conveyor declarations' "$f" | grep -qF -- 'overrides the copied body'
+  # body fidelity: minus the two marker lines, byte-identical to upstream
+  diff <(sed -n '/^# Using Git Worktrees$/,$p' "$f" | grep -vF -- '<!-- conveyor edit -->') \
+       <(sed -n '/^# Using Git Worktrees$/,$p' "$REPO/plugin/skills/worktrees/upstream.md")
 }
