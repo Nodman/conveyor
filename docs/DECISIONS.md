@@ -2,6 +2,19 @@
 
 Each entry: `## YYYY-MM-DD — <topic>` followed by bullets — chose X over Y, because…
 
+## 2026-07-16 — Worktree policy vendored from superpowers
+
+- Chose vendoring obra/superpowers `using-git-worktrees` (pinned commit,
+  two marked edits, precedence-rule declarations) over reinventing — user
+  ruling: upstream is battle-tested.
+- Worktree dir is now `.worktrees/<branch>` (upstream convention); legacy
+  `.claude/worktrees/` stays valid until existing worktrees drain (R10
+  scans both).
+- New: deps install + clean test baseline before work, recorded in the
+  ledger; red baseline stops the task.
+- Single source of truth: `plugin/skills/worktrees/SKILL.md`;
+  executing-tasks only points at it.
+
 ## 2026-07-13 — Auto flattened: no per-card lead
 
 - Leads are subagents and subagents cannot spawn subagents — the lifecycle
