@@ -154,6 +154,62 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [[ "$output" == *"no job record"* ]]
 }
 
+@test "status: done → done <code>" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/s3.md' --prompt-file '$TMP/p.txt'"
+  wait_sentinel "$TMP/s3.md.done"
+  run bash -c "'$SCRIPTS/codex-exec.sh' status '$TMP/s3.md'"
+  [ "$status" -eq 0 ]
+  [ "$output" = "done 0" ]
+}
+
+@test "status: live background run → running with pid and log_age" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX MOCK_CODEX_SLOW=60 '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/s4.md' --prompt-file '$TMP/p.txt'"
+  sleep 1
+  run bash -c "'$SCRIPTS/codex-exec.sh' status '$TMP/s4.md'"
+  [ "$status" -eq 0 ]
+  bash -c "'$SCRIPTS/codex-exec.sh' kill '$TMP/s4.md'" || true
+  [[ "$output" == running\ pid=*log_age=* ]]
+}
+
+@test "status: dead pid, no sentinel → dead" {
+  use_cfg
+  jq -n --arg out "$TMP/s5.md" '{name:"n",model:"m",mode:"background",out:$out,log:($out|sub("\\.md$";".log")),sentinel:($out+".done"),created:"2026-07-17T00:00:00Z",pid:99999999}' > "$TMP/s5.job"
+  run bash -c "'$SCRIPTS/codex-exec.sh' status '$TMP/s5.md'"
+  [ "$status" -eq 0 ]
+  [ "$output" = "dead" ]
+}
+
+@test "wait: returns 0 when sentinel lands, prints done" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX MOCK_CODEX_SLOW=2 '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/s6.md' --prompt-file '$TMP/p.txt'"
+  run bash -c "'$SCRIPTS/codex-exec.sh' wait '$TMP/s6.md' --timeout 30"
+  [ "$status" -eq 0 ]
+  [ "$output" = "done 0" ]
+}
+
+@test "wait: dead run → exit 3" {
+  use_cfg
+  jq -n --arg out "$TMP/s7.md" '{name:"n",model:"m",mode:"background",out:$out,log:($out|sub("\\.md$";".log")),sentinel:($out+".done"),created:"2026-07-17T00:00:00Z",pid:99999999}' > "$TMP/s7.job"
+  run bash -c "'$SCRIPTS/codex-exec.sh' wait '$TMP/s7.md' --timeout 30"
+  [ "$status" -eq 3 ]
+  [ "$output" = "dead" ]
+}
+
+@test "wait: timeout → exit 124" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX MOCK_CODEX_SLOW=60 '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/s8.md' --prompt-file '$TMP/p.txt'"
+  run bash -c "'$SCRIPTS/codex-exec.sh' wait '$TMP/s8.md' --timeout 1"
+  code="$status"
+  bash -c "'$SCRIPTS/codex-exec.sh' kill '$TMP/s8.md'" || true
+  [ "$code" -eq 124 ]
+}
+
 @test "run codex args: default full-access, model, stdin prompt" {
   use_cfg
   printf 'q\n' > "$TMP/p.txt"

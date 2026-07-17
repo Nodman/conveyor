@@ -12,6 +12,8 @@ usage() {
     echo "       codex-exec.sh session-id <log>"
     echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--effort minimal|low|medium|high|xhigh] [--visibility <mode>] [--sandbox read-only|workspace-write|danger-full-access (default: danger-full-access)] [--workdir <dir>] [--output-schema <f>]"
     echo "       codex-exec.sh kill <report.md>"
+    echo "       codex-exec.sh status <report.md>"
+    echo "       codex-exec.sh wait <report.md> [--timeout <s>]"
     echo "       codex-exec.sh audit <log>"
     echo "       codex-exec.sh render <log> <report> [color-code] (internal: codex --json stream on stdin)"
   } >&2
@@ -315,6 +317,69 @@ kill_run() {
   esac
 }
 
+status_run() {
+  local out="${1:?}" job sentinel
+  job="${out%.md}.job"
+  sentinel="$out.done"
+  if [[ -f "$sentinel" ]]; then
+    echo "done $(cat "$sentinel")"
+    return 0
+  fi
+  [[ -f "$job" ]] || die "no run for $out"
+  local mode pid pane log age="?"
+  mode="$(jq -r .mode "$job")"
+  pid="$(jq -r '.pid // empty' "$job")"
+  pane="$(jq -r '.pane // empty' "$job")"
+  log="$(jq -r .log "$job")"
+  if [[ -f "$log" ]]; then
+    age="$(( $(date +%s) - $(stat -f %m "$log" 2>/dev/null || stat -c %Y "$log") ))"
+  fi
+  case "$mode" in
+    background)
+      if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+        echo "running pid=$pid log_age=${age}s"
+      else
+        echo dead
+      fi ;;
+    tmux)
+      if [[ -n "$pane" ]] && tmux list-panes -a -F '#{pane_id}' 2>/dev/null | grep -qx "$pane"; then
+        echo "running pane=$pane log_age=${age}s"
+      else
+        echo dead
+      fi ;;
+    *) echo "running mode=$mode (no handle)" ;;
+  esac
+}
+
+wait_run() {
+  local out="${1:?}"
+  shift
+  local timeout=540
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --timeout) timeout="$2"; shift 2 ;;
+      *) usage ;;
+    esac
+  done
+  local sentinel="$out.done" deadline=$(( $(date +%s) + timeout )) s
+  while true; do
+    if [[ -f "$sentinel" ]]; then
+      echo "done $(cat "$sentinel")"
+      return 0
+    fi
+    s="$(status_run "$out")"
+    if [[ "$s" == dead ]]; then
+      echo dead
+      return 3
+    fi
+    if (( $(date +%s) >= deadline )); then
+      echo timeout
+      return 124
+    fi
+    sleep 5
+  done
+}
+
 case "${1:-}" in
   preflight) preflight ;;
   detect) detect ;;
@@ -323,6 +388,8 @@ case "${1:-}" in
   audit) shift; audit "$@" ;;
   run) shift; run_codex "$@" ;;
   kill) shift; kill_run "$@" ;;
+  status) shift; status_run "$@" ;;
+  wait) shift; wait_run "$@" ;;
   render) shift; render_stream "$@" ;;
   *) usage ;;
 esac
