@@ -11,6 +11,7 @@ usage() {
     echo "       codex-exec.sh set-visibility <window|background>"
     echo "       codex-exec.sh session-id <log>"
     echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--effort minimal|low|medium|high|xhigh] [--visibility <mode>] [--sandbox read-only|workspace-write|danger-full-access (default: danger-full-access)] [--workdir <dir>] [--output-schema <f>]"
+    echo "       codex-exec.sh kill <report.md>"
     echo "       codex-exec.sh audit <log>"
     echo "       codex-exec.sh render <log> <report> [color-code] (internal: codex --json stream on stdin)"
   } >&2
@@ -278,6 +279,42 @@ EOF
     "$name" "$sandbox_mode" "$color" "$out" "$log" "$sentinel" "$vis" "$job"
 }
 
+kill_run() {
+  local out="${1:?}" job sentinel
+  job="${out%.md}.job"
+  sentinel="$out.done"
+  [[ -f "$job" ]] || die "no job record: $job"
+  if [[ -f "$sentinel" ]]; then
+    echo "already done ($(cat "$sentinel"))"
+    return 0
+  fi
+  local mode pid pane
+  mode="$(jq -r .mode "$job")"
+  pid="$(jq -r '.pid // empty' "$job")"
+  pane="$(jq -r '.pane // empty' "$job")"
+  case "$mode" in
+    background)
+      [[ -n "$pid" ]] || die "no pid in $job"
+      # TERM runner children; the runner must survive to write PIPESTATUS.
+      pkill -TERM -P "$pid" 2>/dev/null || true
+      local i
+      for ((i = 0; i < 20; i++)); do
+        [[ -f "$sentinel" ]] && break
+        sleep 0.5
+      done
+      if [[ ! -f "$sentinel" ]]; then
+        pkill -KILL -P "$pid" 2>/dev/null || true
+        kill -KILL "$pid" 2>/dev/null || true
+      fi
+      echo "killed pid=$pid" ;;
+    tmux)
+      [[ -n "$pane" ]] || die "no pane in $job"
+      tmux kill-pane -t "$pane" 2>/dev/null || true
+      echo "killed pane=$pane (no sentinel — pane died with the runner)" ;;
+    *) die "kill unsupported for mode=$mode — close it by hand" ;;
+  esac
+}
+
 case "${1:-}" in
   preflight) preflight ;;
   detect) detect ;;
@@ -285,6 +322,7 @@ case "${1:-}" in
   session-id) shift; session_id "$@" ;;
   audit) shift; audit "$@" ;;
   run) shift; run_codex "$@" ;;
+  kill) shift; kill_run "$@" ;;
   render) shift; render_stream "$@" ;;
   *) usage ;;
 esac

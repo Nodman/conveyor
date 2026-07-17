@@ -124,6 +124,36 @@ wait_sentinel() { # $1=path — poll up to ~5s
   grep -qF "job=$TMP/j2.job" <<<"$(cd "$TMP" && $CX "$SCRIPTS/codex-exec.sh" run --name n --model m --out "$TMP/j2.md" --prompt-file "$TMP/p.txt")"
 }
 
+@test "kill: background run TERMs codex, worker writes 143 sentinel" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX MOCK_CODEX_SLOW=60 '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/k1.md' --prompt-file '$TMP/p.txt'"
+  [ "$status" -eq 0 ]
+  sleep 1
+  run bash -c "'$SCRIPTS/codex-exec.sh' kill '$TMP/k1.md'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/k1.md.done"
+  code="$(cat "$TMP/k1.md.done")"
+  [ "$code" != "0" ]
+}
+
+@test "kill: finished run → already done, sentinel untouched" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/k2.md' --prompt-file '$TMP/p.txt'"
+  wait_sentinel "$TMP/k2.md.done"
+  run bash -c "'$SCRIPTS/codex-exec.sh' kill '$TMP/k2.md'"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$TMP/k2.md.done")" = "0" ]
+  [[ "$output" == *"already done"* ]]
+}
+
+@test "kill: no .job record → dies" {
+  run bash -c "'$SCRIPTS/codex-exec.sh' kill '$TMP/nope.md'"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"no job record"* ]]
+}
+
 @test "run codex args: default full-access, model, stdin prompt" {
   use_cfg
   printf 'q\n' > "$TMP/p.txt"
