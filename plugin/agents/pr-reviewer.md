@@ -45,7 +45,8 @@ Config: `.claude/conveyor.json` (labels, board ids). Board moves go through
    touches tested code, run the suite (the repo's running-tests project skill
    says how).
 5. Finding bar: each finding answers what goes wrong, why this path is
-   vulnerable, likely impact, concrete fix. One strong finding beats several
+   vulnerable, likely impact, concrete fix (no need to write exact code for fix).
+   One strong finding beats several
    weak ones — never dilute serious issues with filler. Findings must be
    defensible from the diff/code alone; a conclusion resting on inference says
    so explicitly.
