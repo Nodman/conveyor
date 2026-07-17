@@ -38,8 +38,9 @@ live in `${CLAUDE_PLUGIN_ROOT}/scripts/`.
      <dir>/<name>-r1-prompt.md`. Deliberation-only is enforced by the
      prompt, not a sandbox — codex runs full-access (yolo ruling) so it
      can research the web.
-   Wait on sentinels/agent returns; poll every ~15s, cap 15 minutes. Timeout
-   or failure → drop that member and tell the user.
+   Wait: `codex-exec.sh wait <out> --timeout 540` per codex member (re-call
+   once for the 15-min cap; claude members return via Agent). `dead`/timeout
+   → `codex-exec.sh kill <out>`, drop that member and tell the user.
 3. **Round 2 — rebuttal.** Each member receives all other proposals verbatim:
    "Attack or concede each point. Concede only what is genuinely better.
    End with your revised proposal." claude runners → SendMessage to the named

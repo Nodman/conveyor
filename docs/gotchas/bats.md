@@ -14,3 +14,8 @@ Rule: terminal-isolated tests must unset both `TMUX` and `TMUX_PANE`.
 Symptom: pty tests pass on macOS but fail in Ubuntu CI before running the command.
 Cause: BSD uses `script -q /dev/null command`; util-linux requires `script -qec "command" /dev/null`.
 Rule: detect util-linux with `script --version`; use its `-e` flag to propagate command failures.
+
+## GNU `stat -f` succeeds where BSD-first fallbacks expect failure
+Symptom: a macOS-green suite fails on Linux CI with arithmetic errors.
+Cause: GNU `-f` is filesystem status and prints the mount point with exit 0, so `stat -f %m || stat -c %Y` never falls back.
+Rule: probe `stat -c %Y` first, with BSD `stat -f %m` as the fallback.

@@ -10,7 +10,10 @@ usage() {
     echo "       codex-exec.sh detect"
     echo "       codex-exec.sh set-visibility <window|background>"
     echo "       codex-exec.sh session-id <log>"
-    echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--visibility <mode>] [--sandbox read-only|workspace-write|danger-full-access (default: danger-full-access)] [--workdir <dir>] [--output-schema <f>]"
+    echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--effort minimal|low|medium|high|xhigh] [--visibility <mode>] [--sandbox read-only|workspace-write|danger-full-access (default: danger-full-access)] [--workdir <dir>] [--output-schema <f>]"
+    echo "       codex-exec.sh kill <report.md>"
+    echo "       codex-exec.sh status <report.md>"
+    echo "       codex-exec.sh wait <report.md> [--timeout <s>]"
     echo "       codex-exec.sh audit <log>"
     echo "       codex-exec.sh render <log> <report> [color-code] (internal: codex --json stream on stdin)"
   } >&2
@@ -165,7 +168,7 @@ render_stream() {
 
 run_codex() {
   # default per DECISIONS.md 2026-07-13 yolo ruling: codex runs unsandboxed
-  local name="" model="" out="" resume="" prompt_file="" vis="" sandbox_mode="danger-full-access" workdir="" pane=""
+  local name="" model="" out="" resume="" prompt_file="" effort="" vis="" sandbox_mode="danger-full-access" workdir="" pane="" pid=""
   local tmux_target="" tmux_window="" right_pane="" candidate="" at_right=""
   local output_schema=""
   while [[ $# -gt 0 ]]; do
@@ -175,6 +178,7 @@ run_codex() {
       --out) out="$2"; shift 2 ;;
       --resume) resume="$2"; shift 2 ;;
       --prompt-file) prompt_file="$2"; shift 2 ;;
+      --effort) effort="$2"; shift 2 ;;
       --visibility) vis="$2"; shift 2 ;;
       --sandbox) sandbox_mode="$2"; shift 2 ;;
       --workdir) workdir="$2"; shift 2 ;;
@@ -184,6 +188,7 @@ run_codex() {
   done
   [[ -n "$name" && -n "$model" && -n "$out" && -n "$prompt_file" ]] || usage
   case "$sandbox_mode" in read-only|workspace-write|danger-full-access) ;; *) usage ;; esac
+  case "$effort" in ""|minimal|low|medium|high|xhigh) ;; *) usage ;; esac
   [[ -z "$output_schema" || -f "$output_schema" ]] || die "no output schema: $output_schema"
   [[ -f "$prompt_file" ]] || die "no prompt file: $prompt_file"
   [[ -z "$workdir" || -d "$workdir" ]] || die "no workdir: $workdir"
@@ -193,16 +198,20 @@ run_codex() {
   if [[ -z "$vis" ]]; then vis="$(detect)"; fi
   if [[ "$vis" == "unset" ]]; then vis=background; fi
 
-  local log="${out%.md}.log" sentinel="$out.done" runner="${out%.md}.run.sh" color
+  local log="${out%.md}.log" sentinel="$out.done" runner="${out%.md}.run.sh" job="${out%.md}.job" color
   color="$(agent_color "$name")"
-  rm -f "$out" "$sentinel"
+  rm -f "$out" "$sentinel" "$job"
   # web_search is off by default; -c form works on fresh AND resume (live-verified 0.144.1)
   local search="-c tools.web_search=true"
-  local codex_cmd="codex exec -m $model $search" sandbox="-s $sandbox_mode"
+  local effort_flag=""
+  [[ -n "$effort" ]] && effort_flag="-c model_reasoning_effort=$effort"
+  local codex_cmd="codex exec -m $model $search $effort_flag" sandbox="-s $sandbox_mode"
   # resume subcommand rejects -s; set the sandbox via config instead
-  if [[ -n "$resume" ]]; then codex_cmd="codex exec resume $resume $search"; sandbox="-c 'sandbox_mode=\"$sandbox_mode\"'"; fi
+  if [[ -n "$resume" ]]; then codex_cmd="codex exec resume $resume -m $model $search $effort_flag"; sandbox="-c 'sandbox_mode=\"$sandbox_mode\"'"; fi
   local schema_flag=""
   [[ -n "$output_schema" ]] && schema_flag="--output-schema \"$output_schema\""
+  local schema_check=""
+  [[ -n "$output_schema" ]] && schema_check="if [[ \"\$rc\" == 0 ]] && ! jq -e . $out >/dev/null 2>&1; then echo \"FAIL: report not valid JSON: $out\" >> $log; rc=98; fi"
   local cd_line="" workdir_field=""
   [[ -n "$workdir" ]] && cd_line="cd $workdir || { echo 1 > $sentinel; exit 1; }"
   [[ -n "$workdir" ]] && workdir_field=" workdir=$workdir"
@@ -218,7 +227,10 @@ printf '\e[2m--- prompt ---\n'
 cat $prompt_file
 printf -- '--------------\e[0m\n'
 $codex_cmd $sandbox $schema_flag --json -o $out - < $prompt_file 2>&1 | $SCRIPT_DIR/codex-exec.sh render $log $out $color
-echo "\${PIPESTATUS[0]}" > $sentinel
+rc="\${PIPESTATUS[0]}"
+if [[ "\$rc" == 0 && ! -s $out ]]; then echo "FAIL: no report at $out" >> $log; rc=97; fi
+$schema_check
+echo "\$rc" > $sentinel
 EOF
   chmod +x "$runner"
 
@@ -253,11 +265,124 @@ EOF
     window)
       osascript -e "tell application \"Terminal\" to do script \"$runner\"" >/dev/null ;;
     background)
-      nohup "$runner" >/dev/null 2>&1 & ;;
+      nohup "$runner" >/dev/null 2>&1 & pid=$! ;;
     *) die "unknown visibility: $vis" ;;
   esac
-  printf 'spawn=%s sandbox=%s color=%s\nreport=%s\nlog=%s\nsentinel=%s\nmode=%s\n' \
-    "$name" "$sandbox_mode" "$color" "$out" "$log" "$sentinel" "$vis"
+  jq -n --arg name "$name" --arg model "$model" --arg mode "$vis" \
+    --arg out "$out" --arg log "$log" --arg sentinel "$sentinel" \
+    --arg workdir "$workdir" --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --arg pid "${pid:-}" --arg pane "${pane:-}" \
+    '{name:$name, model:$model, mode:$mode, out:$out, log:$log,
+      sentinel:$sentinel, created:$created}
+     + (if $workdir != "" then {workdir:$workdir} else {} end)
+     + (if $pid != "" then {pid:($pid|tonumber)} else {} end)
+     + (if $pane != "" then {pane:$pane} else {} end)' > "$job"
+  printf 'spawn=%s sandbox=%s color=%s\nreport=%s\nlog=%s\nsentinel=%s\nmode=%s\njob=%s\n' \
+    "$name" "$sandbox_mode" "$color" "$out" "$log" "$sentinel" "$vis" "$job"
+}
+
+kill_run() {
+  local out="${1:?}" job sentinel
+  job="${out%.md}.job"
+  sentinel="$out.done"
+  [[ -f "$job" ]] || die "no job record: $job"
+  if [[ -f "$sentinel" ]]; then
+    echo "already done ($(cat "$sentinel"))"
+    return 0
+  fi
+  local mode pid pane
+  mode="$(jq -r .mode "$job")"
+  pid="$(jq -r '.pid // empty' "$job")"
+  pane="$(jq -r '.pane // empty' "$job")"
+  case "$mode" in
+    background)
+      [[ -n "$pid" ]] || die "no pid in $job"
+      # TERM runner children; the runner must survive to write PIPESTATUS.
+      pkill -TERM -P "$pid" 2>/dev/null || true
+      local i
+      for ((i = 0; i < 20; i++)); do
+        [[ -f "$sentinel" ]] && break
+        sleep 0.5
+      done
+      if [[ ! -f "$sentinel" ]]; then
+        pkill -KILL -P "$pid" 2>/dev/null || true
+        kill -KILL "$pid" 2>/dev/null || true
+      fi
+      echo "killed pid=$pid" ;;
+    tmux)
+      [[ -n "$pane" ]] || die "no pane in $job"
+      tmux kill-pane -t "$pane" 2>/dev/null || true
+      echo "killed pane=$pane (no sentinel — pane died with the runner)" ;;
+    *) die "kill unsupported for mode=$mode — close it by hand" ;;
+  esac
+}
+
+status_run() {
+  local out="${1:?}" job sentinel
+  job="${out%.md}.job"
+  sentinel="$out.done"
+  if [[ -f "$sentinel" ]]; then
+    echo "done $(cat "$sentinel")"
+    return 0
+  fi
+  [[ -f "$job" ]] || die "no run for $out"
+  local mode pid pane log age="?"
+  mode="$(jq -r .mode "$job")"
+  pid="$(jq -r '.pid // empty' "$job")"
+  pane="$(jq -r '.pane // empty' "$job")"
+  log="$(jq -r .log "$job")"
+  if [[ -f "$log" ]]; then
+    age="$(( $(date +%s) - $(stat -c %Y "$log" 2>/dev/null || stat -f %m "$log") ))"
+  fi
+  case "$mode" in
+    background)
+      if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+        echo "running pid=$pid log_age=${age}s"
+      else
+        status_dead "$sentinel"
+      fi ;;
+    tmux)
+      if [[ -n "$pane" ]] && tmux list-panes -a -F '#{pane_id}' 2>/dev/null | grep -qx "$pane"; then
+        echo "running pane=$pane log_age=${age}s"
+      else
+        status_dead "$sentinel"
+      fi ;;
+    *) echo "running mode=$mode (no handle)" ;;
+  esac
+}
+
+status_dead() {
+  # the run may finish between the top sentinel check and the liveness probe
+  if [[ -f "$1" ]]; then echo "done $(cat "$1")"; else echo dead; fi
+}
+
+wait_run() {
+  local out="${1:?}"
+  shift
+  local timeout=540
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --timeout) timeout="$2"; shift 2 ;;
+      *) usage ;;
+    esac
+  done
+  local sentinel="$out.done" deadline=$(( $(date +%s) + timeout )) s
+  while true; do
+    if [[ -f "$sentinel" ]]; then
+      echo "done $(cat "$sentinel")"
+      return 0
+    fi
+    s="$(status_run "$out")"
+    if [[ "$s" == dead ]]; then
+      echo dead
+      return 3
+    fi
+    if (( $(date +%s) >= deadline )); then
+      echo timeout
+      return 124
+    fi
+    sleep 5
+  done
 }
 
 case "${1:-}" in
@@ -267,6 +392,9 @@ case "${1:-}" in
   session-id) shift; session_id "$@" ;;
   audit) shift; audit "$@" ;;
   run) shift; run_codex "$@" ;;
+  kill) shift; kill_run "$@" ;;
+  status) shift; status_run "$@" ;;
+  wait) shift; wait_run "$@" ;;
   render) shift; render_stream "$@" ;;
   *) usage ;;
 esac

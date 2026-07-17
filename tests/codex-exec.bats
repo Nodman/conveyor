@@ -109,6 +109,120 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [ "$output" = "0000-mock-session" ]
 }
 
+@test "run background: .job record has pid, mode, paths" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/j1.md' --prompt-file '$TMP/p.txt'"
+  [ "$status" -eq 0 ]
+  [ -f "$TMP/j1.job" ]
+  run jq -r .mode "$TMP/j1.job"
+  [ "$output" = "background" ]
+  run jq -e '.pid > 0' "$TMP/j1.job"
+  [ "$status" -eq 0 ]
+  run jq -r .sentinel "$TMP/j1.job"
+  [ "$output" = "$TMP/j1.md.done" ]
+  grep -qF "job=$TMP/j2.job" <<<"$(cd "$TMP" && $CX "$SCRIPTS/codex-exec.sh" run --name n --model m --out "$TMP/j2.md" --prompt-file "$TMP/p.txt")"
+}
+
+@test "kill: background run TERMs codex, worker writes 143 sentinel" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX MOCK_CODEX_SLOW=60 '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/k1.md' --prompt-file '$TMP/p.txt'"
+  [ "$status" -eq 0 ]
+  sleep 1
+  run bash -c "'$SCRIPTS/codex-exec.sh' kill '$TMP/k1.md'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/k1.md.done"
+  code="$(cat "$TMP/k1.md.done")"
+  [ "$code" != "0" ]
+}
+
+@test "kill: finished run → already done, sentinel untouched" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/k2.md' --prompt-file '$TMP/p.txt'"
+  wait_sentinel "$TMP/k2.md.done"
+  run bash -c "'$SCRIPTS/codex-exec.sh' kill '$TMP/k2.md'"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$TMP/k2.md.done")" = "0" ]
+  [[ "$output" == *"already done"* ]]
+}
+
+@test "kill: no .job record → dies" {
+  run bash -c "'$SCRIPTS/codex-exec.sh' kill '$TMP/nope.md'"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"no job record"* ]]
+}
+
+@test "status: done → done <code>" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/s3.md' --prompt-file '$TMP/p.txt'"
+  wait_sentinel "$TMP/s3.md.done"
+  run bash -c "'$SCRIPTS/codex-exec.sh' status '$TMP/s3.md'"
+  [ "$status" -eq 0 ]
+  [ "$output" = "done 0" ]
+}
+
+@test "status: live background run → running with pid and log_age" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX MOCK_CODEX_SLOW=60 '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/s4.md' --prompt-file '$TMP/p.txt'"
+  sleep 1
+  run bash -c "'$SCRIPTS/codex-exec.sh' status '$TMP/s4.md'"
+  [ "$status" -eq 0 ]
+  bash -c "'$SCRIPTS/codex-exec.sh' kill '$TMP/s4.md'" || true
+  [[ "$output" == running\ pid=*log_age=* ]]
+}
+
+@test "status: dead pid, no sentinel → dead" {
+  use_cfg
+  jq -n --arg out "$TMP/s5.md" '{name:"n",model:"m",mode:"background",out:$out,log:($out|sub("\\.md$";".log")),sentinel:($out+".done"),created:"2026-07-17T00:00:00Z",pid:99999999}' > "$TMP/s5.job"
+  run bash -c "'$SCRIPTS/codex-exec.sh' status '$TMP/s5.md'"
+  [ "$status" -eq 0 ]
+  [ "$output" = "dead" ]
+}
+
+@test "status: run finishing mid-status reports done, not dead (TOCTOU)" {
+  use_cfg
+  jq -n --arg out "$TMP/s9.md" '{name:"n",model:"m",mode:"background",out:$out,log:($out|sub("\\.md$";".log")),sentinel:($out+".done"),created:"2026-07-17T00:00:00Z",pid:99999999}' > "$TMP/s9.job"
+  # jq shim: sentinel lands AFTER the top check, via status_run's first jq call
+  mkdir "$TMP/shim9"
+  real_jq="$(command -v jq)"
+  printf '#!/usr/bin/env bash\necho "0" > "%s"\nexec "%s" "$@"\n' "$TMP/s9.md.done" "$real_jq" > "$TMP/shim9/jq"
+  chmod +x "$TMP/shim9/jq"
+  run bash -c "PATH='$TMP/shim9':\"\$PATH\" '$SCRIPTS/codex-exec.sh' status '$TMP/s9.md'"
+  [ "$status" -eq 0 ]
+  [ "$output" = "done 0" ]
+}
+
+@test "wait: returns 0 when sentinel lands, prints done" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX MOCK_CODEX_SLOW=2 '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/s6.md' --prompt-file '$TMP/p.txt'"
+  run bash -c "'$SCRIPTS/codex-exec.sh' wait '$TMP/s6.md' --timeout 30"
+  [ "$status" -eq 0 ]
+  [ "$output" = "done 0" ]
+}
+
+@test "wait: dead run → exit 3" {
+  use_cfg
+  jq -n --arg out "$TMP/s7.md" '{name:"n",model:"m",mode:"background",out:$out,log:($out|sub("\\.md$";".log")),sentinel:($out+".done"),created:"2026-07-17T00:00:00Z",pid:99999999}' > "$TMP/s7.job"
+  run bash -c "'$SCRIPTS/codex-exec.sh' wait '$TMP/s7.md' --timeout 30"
+  [ "$status" -eq 3 ]
+  [ "$output" = "dead" ]
+}
+
+@test "wait: timeout → exit 124" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX MOCK_CODEX_SLOW=60 '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/s8.md' --prompt-file '$TMP/p.txt'"
+  run bash -c "'$SCRIPTS/codex-exec.sh' wait '$TMP/s8.md' --timeout 1"
+  code="$status"
+  bash -c "'$SCRIPTS/codex-exec.sh' kill '$TMP/s8.md'" || true
+  [ "$code" -eq 124 ]
+}
+
 @test "run codex args: default full-access, model, stdin prompt" {
   use_cfg
   printf 'q\n' > "$TMP/p.txt"
@@ -192,6 +306,15 @@ wait_sentinel() { # $1=path — poll up to ~5s
   run cat "$TMP/r1.run.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"codex exec"* && "$output" == *"> $TMP/r1.md.done"* && "$output" == *"sleep 10"* && "$output" == *"--json"* && "$output" == *"codex-exec.sh render $TMP/r1.log"* && "$output" == *"printf -- '--------------"* ]]
+}
+
+@test "run tmux mode: .job record has pane id" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX TMUX_PANE=%1 MOCK_TMUX_LAYOUT=no-split '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/j3.md' --prompt-file '$TMP/p.txt' --visibility tmux"
+  [ "$status" -eq 0 ]
+  run jq -r .pane "$TMP/j3.job"
+  [ "$output" = "%99" ]
 }
 
 @test "run tmux mode: existing right split stacks under bottom-most pane" {
@@ -424,6 +547,35 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [[ "$output" == "1" ]]
 }
 
+@test "run: codex exit 0 but no report → sentinel 97, reason in log" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX MOCK_CODEX_NO_REPORT=1 '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/v1.md' --prompt-file '$TMP/p.txt'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/v1.md.done"
+  [ "$(cat "$TMP/v1.md.done")" = "97" ]
+  run grep -c 'no report' "$TMP/v1.log"
+  [ "$output" = "1" ]
+}
+
+@test "run --output-schema: non-JSON report → sentinel 98" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX MOCK_CODEX_BAD_REPORT=1 '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/v2.md' --prompt-file '$TMP/p.txt' --output-schema '$SCRIPTS/../config/report.schema.json'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/v2.md.done"
+  [ "$(cat "$TMP/v2.md.done")" = "98" ]
+}
+
+@test "run --output-schema: valid JSON report → sentinel 0" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/v3.md' --prompt-file '$TMP/p.txt' --output-schema '$SCRIPTS/../config/report.schema.json'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/v3.md.done"
+  [ "$(cat "$TMP/v3.md.done")" = "0" ]
+}
+
 @test "run --output-schema passthrough: fresh and resume" {
   use_cfg
   printf 'q\n' > "$TMP/p.txt"
@@ -503,4 +655,46 @@ wait_sentinel() { # $1=path — poll up to ~5s
   raw_expected="$(printf '\033[35m%s\033[0m' "$rpt")"
   [ "$output" != "${output#*"$raw_expected"}" ]
   ! grep -qF 'verdict: comment' <<<"$output"
+}
+
+@test "run resume: passes -m <model> (spec: escalation must not silently no-op)" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model gpt-5.6-sol --out '$TMP/m1.md' --prompt-file '$TMP/p.txt' --resume 0000-mock-session"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/m1.md.done"
+  [ "$(cat "$TMP/m1.md.done")" = "0" ]
+  run cat "$TMP/m1.run.sh"
+  [[ "$output" == *'codex exec resume 0000-mock-session -m gpt-5.6-sol'* ]]
+}
+
+@test "run --effort: -c model_reasoning_effort on fresh and resume" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/e1.md' --prompt-file '$TMP/p.txt' --effort high"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/e1.md.done"
+  [ "$(cat "$TMP/e1.md.done")" = "0" ]
+  grep -qF -- '-c model_reasoning_effort=high' "$TMP/e1.run.sh"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/e2.md' --prompt-file '$TMP/p.txt' --resume 0000-mock-session --effort low"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/e2.md.done"
+  grep -qF -- '-c model_reasoning_effort=low' "$TMP/e2.run.sh"
+}
+
+@test "run without --effort: model_reasoning_effort never passed" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/e3.md' --prompt-file '$TMP/p.txt'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/e3.md.done"
+  run grep -F 'model_reasoning_effort' "$TMP/e3.run.sh"
+  [ "$status" -ne 0 ]
+}
+
+@test "run --effort bogus value → usage" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/e4.md' --prompt-file '$TMP/p.txt' --effort turbo"
+  [ "$status" -eq 2 ]
 }

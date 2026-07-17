@@ -14,6 +14,14 @@ Every delegated spawn states:
 - **Communication style** — short sentences, lead with the answer.
 - **Route record** — class, floor, model, reason.
 
+## Prompt rules
+
+- One task per run; unrelated asks are separate runs.
+- Resume sends only the delta instruction, never the restated prompt, unless
+  direction changed materially.
+- Claims anchored to observed evidence; hypotheses labeled as such.
+- Weak result → tighten the prompt contract before raising model/effort.
+
 ## Output-bar rubric
 
 Write the bar BEFORE choosing the model. Escalation judges the deliverable
@@ -50,7 +58,8 @@ compatible runner MUST provide:
   (fields: verdict, message, privileged_actions, denials, commit_shas, tests).
 - Post-run check: `audit <log>` lists the run's privileged commands.
 - Session-id capture from the run header (for resume; never `--last`).
-- Explicit timeout + background poll on the sentinel.
+- Explicit timeout via a bounded `wait` on the sentinel; a stop handle
+  (`kill`) for live runs.
 - Model-agnostic `-m <model>`.
 
 ~30 lines of shell for a minimal runner.

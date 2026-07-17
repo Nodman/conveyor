@@ -45,6 +45,16 @@ Rule: `--strict-config` is DROPPED (ruling 2026-07-13). It made the canary/gate 
 - codex emits `command_execution` items as `/bin/zsh -lc '<cmd>'`, not the bare command. Prefix-anchored matching misses them — `audit` and the canary match the tool token as a SUBSTRING (`*"gh "*`, `*"git commit"*`).
 - The exact string `Approval policy is currently never` only appears when `approval_policy` is effectively `never`. Under our `approval_policy="on-request"` with NO `approvals_reviewer`, the escalation is SILENTLY denied: the command still runs but its network/`.git` action fails (`error connecting to api.github.com`, exit 1). So denial-string detection alone is insufficient — the canary PASS check must require the privileged command to exit 0, not merely to have executed. Live: auto_review on → gh exit 0; control (no reviewer) → gh exit 1.
 
+## resume model + reasoning effort (codex-cli 0.144.4, 2026-07-17)
+Verified against the real CLI (authed, gpt-5.6-sol) in a throwaway `/tmp` dir, `codex exec ... --skip-git-repo-check` (untrusted dir needs this flag or it aborts before running).
+
+- Fresh: `codex exec -m gpt-5.6-sol --json -s read-only - <<< 'Reply DONE.'` → `thread.started` gives the session id, `turn.completed` follows. Works.
+- Contract A confirmed: `resume` takes `-m` directly, same as fresh. `codex exec resume <sid> -m gpt-5.6-sol --json - <<< 'Reply DONE.'` → no arg error, `turn.completed` reached. No need for `-c model=...` fallback (contract B not required).
+- Reasoning effort accepted on both fresh and resume via `-c model_reasoning_effort=high` — no config error, `turn.completed` reached both times.
+  - Fresh: `codex exec -m gpt-5.6-sol --json -s read-only -c model_reasoning_effort=high ...` → ok.
+  - Resume: `codex exec resume <sid> -m gpt-5.6-sol --json -c model_reasoning_effort=high ...` → ok.
+- Rule: mock/test `resume` as accepting `-m` and `-c model_reasoning_effort=...` directly (no rewrite needed, unlike the `-s`/sandbox case above).
+
 ## codex escalates ONLY when the prompt asks for it
 Symptom: a correct config + rendered policy still fails the canary — codex runs the command in-sandbox and its `.git`/network action fails, even though escalations are active.
 Cause: codex requests an approval only when the PROMPT explicitly tells it to use escalated permissions. A bare `Run this command: <cmd>` prompt runs sandboxed and never triggers the reviewer. Live evidence: QA 2026-07-13 — both canaries failed closed with a bare-command prompt; the identical command + policy passed once the prompt began "The sandbox blocks <git writes|network>. Using your shell tool's escalated-permissions mechanism (request approval with a justification), run exactly this one command …".

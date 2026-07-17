@@ -29,6 +29,11 @@ Config: `.claude/conveyor.json` (labels, board ids). Board moves go through
    call sites/tests on the PR branch.
 3. Review in severity order:
    - **Correctness** — real bugs, broken invariants, races, edge cases.
+   - **Attack surface** — prioritize expensive/hard-to-detect failures: auth,
+     permissions, trust boundaries; data loss, corruption, irreversible state;
+     rollback, retries, partial failure, idempotency; races, ordering, stale
+     state; empty/null/timeout/degraded-dependency paths; version skew, schema
+     drift; observability gaps that hide failure.
    - **Repo law** — the target repo's CLAUDE.md rules and project skills
      (load relevant ones via the Skill tool); locked decisions in
      docs/DECISIONS.md.
@@ -39,6 +44,12 @@ Config: `.claude/conveyor.json` (labels, board ids). Board moves go through
 4. Verify claims, don't trust them: if the PR says "tests green" and the diff
    touches tested code, run the suite (the repo's running-tests project skill
    says how).
+5. Finding bar: each finding answers what goes wrong, why this path is
+   vulnerable, likely impact, concrete fix (no need to write exact code for fix).
+   One strong finding beats several
+   weak ones — never dilute serious issues with filler. Findings must be
+   defensible from the diff/code alone; a conclusion resting on inference says
+   so explicitly.
 
 ## Verdict
 
