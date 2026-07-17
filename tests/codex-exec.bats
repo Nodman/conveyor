@@ -424,6 +424,35 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [[ "$output" == "1" ]]
 }
 
+@test "run: codex exit 0 but no report → sentinel 97, reason in log" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX MOCK_CODEX_NO_REPORT=1 '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/v1.md' --prompt-file '$TMP/p.txt'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/v1.md.done"
+  [ "$(cat "$TMP/v1.md.done")" = "97" ]
+  run grep -c 'no report' "$TMP/v1.log"
+  [ "$output" = "1" ]
+}
+
+@test "run --output-schema: non-JSON report → sentinel 98" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX MOCK_CODEX_BAD_REPORT=1 '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/v2.md' --prompt-file '$TMP/p.txt' --output-schema '$SCRIPTS/../config/report.schema.json'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/v2.md.done"
+  [ "$(cat "$TMP/v2.md.done")" = "98" ]
+}
+
+@test "run --output-schema: valid JSON report → sentinel 0" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/v3.md' --prompt-file '$TMP/p.txt' --output-schema '$SCRIPTS/../config/report.schema.json'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/v3.md.done"
+  [ "$(cat "$TMP/v3.md.done")" = "0" ]
+}
+
 @test "run --output-schema passthrough: fresh and resume" {
   use_cfg
   printf 'q\n' > "$TMP/p.txt"

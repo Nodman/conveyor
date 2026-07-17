@@ -56,6 +56,7 @@ if [[ -n "${MOCK_CODEX_FAIL:-}" ]]; then
   echo "Not inside a trusted directory and --skip-git-repo-check was not specified."
   exit "$MOCK_CODEX_FAIL"
 fi
+if [[ -n "${MOCK_CODEX_SLOW:-}" ]]; then sleep "$MOCK_CODEX_SLOW"; fi
 if [[ -n "$has_json" ]]; then
   echo '{"type":"thread.started","thread_id":"0000-mock-session"}'
   echo '{"type":"item.started","item":{"id":"i0","type":"command_execution","command":"echo hi","status":"in_progress"}}'
@@ -67,4 +68,14 @@ else
   echo "session id: 0000-mock-session"
   echo "codex mock ran"
 fi
-if [[ -n "$out" ]]; then printf 'mock final message\n' > "$out"; fi
+has_schema=""
+for a in "$@"; do [[ "$a" == "--output-schema" ]] && has_schema=1; done
+if [[ -n "$out" && -z "${MOCK_CODEX_NO_REPORT:-}" ]]; then
+  if [[ -n "${MOCK_CODEX_BAD_REPORT:-}" ]]; then
+    printf 'not json{\n' > "$out"
+  elif [[ -n "$has_schema" ]]; then
+    printf '{"verdict":"comment","message":"mock","privileged_actions":[],"denials":[],"commit_shas":[],"tests":[]}\n' > "$out"
+  else
+    printf 'mock final message\n' > "$out"
+  fi
+fi

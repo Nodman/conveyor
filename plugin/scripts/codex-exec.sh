@@ -207,6 +207,8 @@ run_codex() {
   if [[ -n "$resume" ]]; then codex_cmd="codex exec resume $resume -m $model $search $effort_flag"; sandbox="-c 'sandbox_mode=\"$sandbox_mode\"'"; fi
   local schema_flag=""
   [[ -n "$output_schema" ]] && schema_flag="--output-schema \"$output_schema\""
+  local schema_check=""
+  [[ -n "$output_schema" ]] && schema_check="if [[ \"\$rc\" == 0 ]] && ! jq -e . $out >/dev/null 2>&1; then echo \"FAIL: report not valid JSON: $out\" >> $log; rc=98; fi"
   local cd_line="" workdir_field=""
   [[ -n "$workdir" ]] && cd_line="cd $workdir || { echo 1 > $sentinel; exit 1; }"
   [[ -n "$workdir" ]] && workdir_field=" workdir=$workdir"
@@ -222,7 +224,10 @@ printf '\e[2m--- prompt ---\n'
 cat $prompt_file
 printf -- '--------------\e[0m\n'
 $codex_cmd $sandbox $schema_flag --json -o $out - < $prompt_file 2>&1 | $SCRIPT_DIR/codex-exec.sh render $log $out $color
-echo "\${PIPESTATUS[0]}" > $sentinel
+rc="\${PIPESTATUS[0]}"
+if [[ "\$rc" == 0 && ! -s $out ]]; then echo "FAIL: no report at $out" >> $log; rc=97; fi
+$schema_check
+echo "\$rc" > $sentinel
 EOF
   chmod +x "$runner"
 
