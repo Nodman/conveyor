@@ -51,9 +51,10 @@ Board state via `${CLAUDE_PLUGIN_ROOT}/scripts/card.sh`; config
    plus `Conveyor-Model: <model>` and `Conveyor-Session: <session-id>`
    trailers). Codex runs full-access in its own dedicated per-issue worktree
    (never a shared checkout): it edits, runs ANY tests, commits under that
-   identity, and pushes its own feature branch. Sentinel wait: poll ~15s; at
-   ~15 min check liveness (log growth / visibility pane) — kill and resume by
-   session id (`codex-exec.sh session-id <log>`) only on a dead log. Fix
+   identity, and pushes its own feature branch. Sentinel wait:
+   `codex-exec.sh wait <out> --timeout 540`, re-call while `status` shows
+   `running`; `dead` → `codex-exec.sh kill <out>`, then resume by session id
+   (`codex-exec.sh session-id <log>`). Fix
    rounds resume by session id, one targeted repair max, then escalate per
    routing. One write-mode codex per worktree at a time. Codex
    missing/throttled → routing fallback (Opus) + ledger note.

@@ -50,7 +50,8 @@ compatible runner MUST provide:
   (fields: verdict, message, privileged_actions, denials, commit_shas, tests).
 - Post-run check: `audit <log>` lists the run's privileged commands.
 - Session-id capture from the run header (for resume; never `--last`).
-- Explicit timeout + background poll on the sentinel.
+- Explicit timeout via a bounded `wait` on the sentinel; a stop handle
+  (`kill`) for live runs.
 - Model-agnostic `-m <model>`.
 
 ~30 lines of shell for a minimal runner.
