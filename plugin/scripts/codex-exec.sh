@@ -332,7 +332,7 @@ status_run() {
   pane="$(jq -r '.pane // empty' "$job")"
   log="$(jq -r .log "$job")"
   if [[ -f "$log" ]]; then
-    age="$(( $(date +%s) - $(stat -f %m "$log" 2>/dev/null || stat -c %Y "$log") ))"
+    age="$(( $(date +%s) - $(stat -c %Y "$log" 2>/dev/null || stat -f %m "$log") ))"
   fi
   case "$mode" in
     background)
