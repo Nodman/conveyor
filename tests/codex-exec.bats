@@ -109,6 +109,21 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [ "$output" = "0000-mock-session" ]
 }
 
+@test "run background: .job record has pid, mode, paths" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/j1.md' --prompt-file '$TMP/p.txt'"
+  [ "$status" -eq 0 ]
+  [ -f "$TMP/j1.job" ]
+  run jq -r .mode "$TMP/j1.job"
+  [ "$output" = "background" ]
+  run jq -e '.pid > 0' "$TMP/j1.job"
+  [ "$status" -eq 0 ]
+  run jq -r .sentinel "$TMP/j1.job"
+  [ "$output" = "$TMP/j1.md.done" ]
+  grep -qF "job=$TMP/j2.job" <<<"$(cd "$TMP" && $CX "$SCRIPTS/codex-exec.sh" run --name n --model m --out "$TMP/j2.md" --prompt-file "$TMP/p.txt")"
+}
+
 @test "run codex args: default full-access, model, stdin prompt" {
   use_cfg
   printf 'q\n' > "$TMP/p.txt"
@@ -192,6 +207,15 @@ wait_sentinel() { # $1=path — poll up to ~5s
   run cat "$TMP/r1.run.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"codex exec"* && "$output" == *"> $TMP/r1.md.done"* && "$output" == *"sleep 10"* && "$output" == *"--json"* && "$output" == *"codex-exec.sh render $TMP/r1.log"* && "$output" == *"printf -- '--------------"* ]]
+}
+
+@test "run tmux mode: .job record has pane id" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX TMUX_PANE=%1 MOCK_TMUX_LAYOUT=no-split '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/j3.md' --prompt-file '$TMP/p.txt' --visibility tmux"
+  [ "$status" -eq 0 ]
+  run jq -r .pane "$TMP/j3.job"
+  [ "$output" = "%99" ]
 }
 
 @test "run tmux mode: existing right split stacks under bottom-most pane" {

@@ -165,7 +165,7 @@ render_stream() {
 
 run_codex() {
   # default per DECISIONS.md 2026-07-13 yolo ruling: codex runs unsandboxed
-  local name="" model="" out="" resume="" prompt_file="" effort="" vis="" sandbox_mode="danger-full-access" workdir="" pane=""
+  local name="" model="" out="" resume="" prompt_file="" effort="" vis="" sandbox_mode="danger-full-access" workdir="" pane="" pid=""
   local tmux_target="" tmux_window="" right_pane="" candidate="" at_right=""
   local output_schema=""
   while [[ $# -gt 0 ]]; do
@@ -195,9 +195,9 @@ run_codex() {
   if [[ -z "$vis" ]]; then vis="$(detect)"; fi
   if [[ "$vis" == "unset" ]]; then vis=background; fi
 
-  local log="${out%.md}.log" sentinel="$out.done" runner="${out%.md}.run.sh" color
+  local log="${out%.md}.log" sentinel="$out.done" runner="${out%.md}.run.sh" job="${out%.md}.job" color
   color="$(agent_color "$name")"
-  rm -f "$out" "$sentinel"
+  rm -f "$out" "$sentinel" "$job"
   # web_search is off by default; -c form works on fresh AND resume (live-verified 0.144.1)
   local search="-c tools.web_search=true"
   local effort_flag=""
@@ -262,11 +262,20 @@ EOF
     window)
       osascript -e "tell application \"Terminal\" to do script \"$runner\"" >/dev/null ;;
     background)
-      nohup "$runner" >/dev/null 2>&1 & ;;
+      nohup "$runner" >/dev/null 2>&1 & pid=$! ;;
     *) die "unknown visibility: $vis" ;;
   esac
-  printf 'spawn=%s sandbox=%s color=%s\nreport=%s\nlog=%s\nsentinel=%s\nmode=%s\n' \
-    "$name" "$sandbox_mode" "$color" "$out" "$log" "$sentinel" "$vis"
+  jq -n --arg name "$name" --arg model "$model" --arg mode "$vis" \
+    --arg out "$out" --arg log "$log" --arg sentinel "$sentinel" \
+    --arg workdir "$workdir" --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --arg pid "${pid:-}" --arg pane "${pane:-}" \
+    '{name:$name, model:$model, mode:$mode, out:$out, log:$log,
+      sentinel:$sentinel, created:$created}
+     + (if $workdir != "" then {workdir:$workdir} else {} end)
+     + (if $pid != "" then {pid:($pid|tonumber)} else {} end)
+     + (if $pane != "" then {pane:$pane} else {} end)' > "$job"
+  printf 'spawn=%s sandbox=%s color=%s\nreport=%s\nlog=%s\nsentinel=%s\nmode=%s\njob=%s\n' \
+    "$name" "$sandbox_mode" "$color" "$out" "$log" "$sentinel" "$vis" "$job"
 }
 
 case "${1:-}" in
