@@ -504,3 +504,45 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [ "$output" != "${output#*"$raw_expected"}" ]
   ! grep -qF 'verdict: comment' <<<"$output"
 }
+
+@test "run resume: passes -m <model> (spec: escalation must not silently no-op)" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model gpt-5.6-sol --out '$TMP/m1.md' --prompt-file '$TMP/p.txt' --resume 0000-mock-session"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/m1.md.done"
+  [ "$(cat "$TMP/m1.md.done")" = "0" ]
+  run cat "$TMP/m1.run.sh"
+  [[ "$output" == *'codex exec resume 0000-mock-session -m gpt-5.6-sol'* ]]
+}
+
+@test "run --effort: -c model_reasoning_effort on fresh and resume" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/e1.md' --prompt-file '$TMP/p.txt' --effort high"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/e1.md.done"
+  [ "$(cat "$TMP/e1.md.done")" = "0" ]
+  grep -qF -- '-c model_reasoning_effort=high' "$TMP/e1.run.sh"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/e2.md' --prompt-file '$TMP/p.txt' --resume 0000-mock-session --effort low"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/e2.md.done"
+  grep -qF -- '-c model_reasoning_effort=low' "$TMP/e2.run.sh"
+}
+
+@test "run without --effort: model_reasoning_effort never passed" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/e3.md' --prompt-file '$TMP/p.txt'"
+  [ "$status" -eq 0 ]
+  wait_sentinel "$TMP/e3.md.done"
+  run grep -F 'model_reasoning_effort' "$TMP/e3.run.sh"
+  [ "$status" -ne 0 ]
+}
+
+@test "run --effort bogus value → usage" {
+  use_cfg
+  printf 'q\n' > "$TMP/p.txt"
+  run bash -c "cd '$TMP' && $CX '$SCRIPTS/codex-exec.sh' run --name n --model m --out '$TMP/e4.md' --prompt-file '$TMP/p.txt' --effort turbo"
+  [ "$status" -eq 2 ]
+}

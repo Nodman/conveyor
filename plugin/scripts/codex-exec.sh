@@ -10,7 +10,7 @@ usage() {
     echo "       codex-exec.sh detect"
     echo "       codex-exec.sh set-visibility <window|background>"
     echo "       codex-exec.sh session-id <log>"
-    echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--visibility <mode>] [--sandbox read-only|workspace-write|danger-full-access (default: danger-full-access)] [--workdir <dir>] [--output-schema <f>]"
+    echo "       codex-exec.sh run --name <runner-model> --model <m> --out <report.md> --prompt-file <f> [--resume <session-id>] [--effort minimal|low|medium|high|xhigh] [--visibility <mode>] [--sandbox read-only|workspace-write|danger-full-access (default: danger-full-access)] [--workdir <dir>] [--output-schema <f>]"
     echo "       codex-exec.sh audit <log>"
     echo "       codex-exec.sh render <log> <report> [color-code] (internal: codex --json stream on stdin)"
   } >&2
@@ -165,7 +165,7 @@ render_stream() {
 
 run_codex() {
   # default per DECISIONS.md 2026-07-13 yolo ruling: codex runs unsandboxed
-  local name="" model="" out="" resume="" prompt_file="" vis="" sandbox_mode="danger-full-access" workdir="" pane=""
+  local name="" model="" out="" resume="" prompt_file="" effort="" vis="" sandbox_mode="danger-full-access" workdir="" pane=""
   local tmux_target="" tmux_window="" right_pane="" candidate="" at_right=""
   local output_schema=""
   while [[ $# -gt 0 ]]; do
@@ -175,6 +175,7 @@ run_codex() {
       --out) out="$2"; shift 2 ;;
       --resume) resume="$2"; shift 2 ;;
       --prompt-file) prompt_file="$2"; shift 2 ;;
+      --effort) effort="$2"; shift 2 ;;
       --visibility) vis="$2"; shift 2 ;;
       --sandbox) sandbox_mode="$2"; shift 2 ;;
       --workdir) workdir="$2"; shift 2 ;;
@@ -184,6 +185,7 @@ run_codex() {
   done
   [[ -n "$name" && -n "$model" && -n "$out" && -n "$prompt_file" ]] || usage
   case "$sandbox_mode" in read-only|workspace-write|danger-full-access) ;; *) usage ;; esac
+  case "$effort" in ""|minimal|low|medium|high|xhigh) ;; *) usage ;; esac
   [[ -z "$output_schema" || -f "$output_schema" ]] || die "no output schema: $output_schema"
   [[ -f "$prompt_file" ]] || die "no prompt file: $prompt_file"
   [[ -z "$workdir" || -d "$workdir" ]] || die "no workdir: $workdir"
@@ -198,9 +200,11 @@ run_codex() {
   rm -f "$out" "$sentinel"
   # web_search is off by default; -c form works on fresh AND resume (live-verified 0.144.1)
   local search="-c tools.web_search=true"
-  local codex_cmd="codex exec -m $model $search" sandbox="-s $sandbox_mode"
+  local effort_flag=""
+  [[ -n "$effort" ]] && effort_flag="-c model_reasoning_effort=$effort"
+  local codex_cmd="codex exec -m $model $search $effort_flag" sandbox="-s $sandbox_mode"
   # resume subcommand rejects -s; set the sandbox via config instead
-  if [[ -n "$resume" ]]; then codex_cmd="codex exec resume $resume $search"; sandbox="-c 'sandbox_mode=\"$sandbox_mode\"'"; fi
+  if [[ -n "$resume" ]]; then codex_cmd="codex exec resume $resume -m $model $search $effort_flag"; sandbox="-c 'sandbox_mode=\"$sandbox_mode\"'"; fi
   local schema_flag=""
   [[ -n "$output_schema" ]] && schema_flag="--output-schema \"$output_schema\""
   local cd_line="" workdir_field=""

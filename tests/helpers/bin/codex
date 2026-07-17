@@ -10,6 +10,19 @@ for a in "$@"; do
   [[ "$a" == "--json" ]] && has_json=1
   [[ "$a" == "--color" ]] && has_color=1
 done
+# contract A live-verified 2026-07-17 (task 1): resume accepts -m
+prev=""
+for a in "$@"; do
+  if [[ "$prev" == "-c" ]]; then
+    key="${a%%=*}"; val="${a#*=}"
+    if [[ "$key" == "model_reasoning_effort" ]]; then
+      case "$val" in minimal|low|medium|high|xhigh) ;;
+        *) echo "error: invalid value '$val' for model_reasoning_effort" >&2; exit 1 ;;
+      esac
+    fi
+  fi
+  prev="$a"
+done
 if [[ -n "$has_resume" && -n "$has_s" ]]; then
   echo "error: unexpected argument '-s' found" >&2
   exit 2
