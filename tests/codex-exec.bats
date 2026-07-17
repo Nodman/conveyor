@@ -183,6 +183,19 @@ wait_sentinel() { # $1=path — poll up to ~5s
   [ "$output" = "dead" ]
 }
 
+@test "status: run finishing mid-status reports done, not dead (TOCTOU)" {
+  use_cfg
+  jq -n --arg out "$TMP/s9.md" '{name:"n",model:"m",mode:"background",out:$out,log:($out|sub("\\.md$";".log")),sentinel:($out+".done"),created:"2026-07-17T00:00:00Z",pid:99999999}' > "$TMP/s9.job"
+  # jq shim: sentinel lands AFTER the top check, via status_run's first jq call
+  mkdir "$TMP/shim9"
+  real_jq="$(command -v jq)"
+  printf '#!/usr/bin/env bash\necho "0" > "%s"\nexec "%s" "$@"\n' "$TMP/s9.md.done" "$real_jq" > "$TMP/shim9/jq"
+  chmod +x "$TMP/shim9/jq"
+  run bash -c "PATH='$TMP/shim9':\"\$PATH\" '$SCRIPTS/codex-exec.sh' status '$TMP/s9.md'"
+  [ "$status" -eq 0 ]
+  [ "$output" = "done 0" ]
+}
+
 @test "wait: returns 0 when sentinel lands, prints done" {
   use_cfg
   printf 'q\n' > "$TMP/p.txt"

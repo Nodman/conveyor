@@ -339,16 +339,21 @@ status_run() {
       if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
         echo "running pid=$pid log_age=${age}s"
       else
-        echo dead
+        status_dead "$sentinel"
       fi ;;
     tmux)
       if [[ -n "$pane" ]] && tmux list-panes -a -F '#{pane_id}' 2>/dev/null | grep -qx "$pane"; then
         echo "running pane=$pane log_age=${age}s"
       else
-        echo dead
+        status_dead "$sentinel"
       fi ;;
     *) echo "running mode=$mode (no handle)" ;;
   esac
+}
+
+status_dead() {
+  # the run may finish between the top sentinel check and the liveness probe
+  if [[ -f "$1" ]]; then echo "done $(cat "$1")"; else echo dead; fi
 }
 
 wait_run() {
