@@ -31,7 +31,7 @@ against the bar, not against taste-of-the-day.
 
 - Canonical `<runner>-<model>`; uniqueness suffix `--<issue>-<n>`.
 - Agent tool charset `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$` — no dots. Claude
-  names hyphenate model ids (`claude-opus-4-8--48-2`).
+  names hyphenate model ids (`claude-opus-5--48-2`).
 - Dotted ids only in codex labels/report paths
   (`codex-gpt-5.6-sol--48-1`).
 - ALWAYS set `model:` explicitly in Agent calls — omission silently inherits
