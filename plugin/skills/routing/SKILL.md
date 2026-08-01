@@ -36,7 +36,7 @@ tell the user.
    evidence, risk, taste requirement. It goes in the spawn prompt; escalation
    judges against it.
 2. Don't delegate one grep/read/already-loaded small step.
-3. Classify: judgment / taste / code / legwork / review.
+3. Classify: judgment / taste / code / legwork / review / qa.
 4. Quality floors: judgment → strongest model, main session, never delegated
    (main session below the floor → delegate judgment UP, don't assume the
    director is strongest). Spec/plan judge gates (spec-judge, plan-judge)
@@ -50,6 +50,8 @@ tell the user.
    user-facing output). Legwork → sonnet-5.
    High-risk review (security/concurrency/data-loss/auth/migration) →
    Fable + cross-family second opinion.
+   QA/verification → Opus by default; Fable never runs QA (app-driving
+   legwork, not judgment — the director's floor is wasted there).
 5. Runner constraints: live steering / tool permissions / in-band report /
    teammate resume → Agent tool. Codex is a full lane (edits, tests, commits,
    pushes, gates) — no sandbox constraint; but no mid-run steering, so prefer
@@ -69,7 +71,8 @@ tell the user.
   sonnet → opus (taste/repo-law) or 5.6-sol (intel); 5.5 → 5.6-sol or opus;
   opus/5.6-sol → Fable takes it itself; second substantive miss anywhere →
   Fable directly. Pass original task + failed output + exact defects to the
-  replacement.
+  replacement. Exception: QA never escalates to Fable — Opus miss →
+  5.6-sol, else report the failure to the human.
 - Reviewer disagreement on a blocking issue → Fable adjudicates.
 - Required reviews are never dropped for quota pressure — substitute another
   qualifying reviewer.
