@@ -8,16 +8,7 @@ cmd="${1:-}"; issue="${2:-}"
 [[ "$cmd" == "find" || "$cmd" == "move" ]] || die "usage: card.sh find|move ISSUE [STATUS_KEY]"
 [[ -n "$issue" ]] || die "usage: card.sh find|move ISSUE [STATUS_KEY]"
 
-item_row() {
-  local raw
-  raw=$(gh project item-list "$(cfg .project)" --owner "$(cfg .owner)" --limit 200 --format json)
-  warn_capped "$(jq '.items | length' <<<"$raw")" 200 "gh project item-list"
-  jq -r --argjson n "$issue" \
-    '.items[] | select(.content.number==$n) | "\(.id)\t\(.status // "")"' <<<"$raw" | head -1
-}
-
-row="$(item_row)"
-[[ -n "$row" ]] || die_code3 "no card for issue #$issue"
+row="$("$(dirname "${BASH_SOURCE[0]}")/board-items.sh" find "$issue")"
 
 case "$cmd" in
   find) printf '%s\n' "$row" ;;

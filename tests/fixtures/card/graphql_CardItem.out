@@ -1,0 +1,4 @@
+{"data":{"repository":{"issue":{"projectItems":{"nodes":[
+  {"id":"PVTI_99","project":{"number":42},"fieldValueByName":{"name":"Done"}},
+  {"id":"PVTI_41","project":{"number":7},"fieldValueByName":{"name":"Ready for dev"}}
+]}}}}}
