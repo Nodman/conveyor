@@ -28,7 +28,22 @@ find_item() { # $1=issue → "itemId<TAB>status" | exit 3 absent | die on failur
   printf '%s\n' "$row"
 }
 
+queue_items() { # $1=statusKey → TSV number<TAB>priority<TAB>title, number-ascending
+  local q raw
+  q="is:issue is:open status:\"$(status_name "$1")\""
+  raw=$(gh api graphql --paginate --slurp \
+    -f query='query QueueItems($pid:ID!,$q:String!,$endCursor:String){node(id:$pid){... on ProjectV2{items(query:$q,first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{content{... on Issue{number title}} priority:fieldValueByName(name:"Priority"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}' \
+    -f pid="$(cfg .projectId)" -f q="$q") || die "QueueItems query failed"
+  no_gql_errors "$raw" QueueItems
+  jq -e 'all(.[]; .data.node.items.nodes != null)' <<<"$raw" >/dev/null 2>&1 \
+    || die "QueueItems: bad response"
+  jq -r '[.[].data.node.items.nodes[] | select(.content.number != null)]
+         | sort_by(.content.number)[]
+         | "\(.content.number)\t\(.priority.name // "")\t\(.content.title)"' <<<"$raw"
+}
+
 case "$cmd" in
   find)  [[ -n "${2:-}" ]] || die "usage: board-items.sh find ISSUE"; find_item "$2" ;;
+  queue) [[ -n "${2:-}" ]] || die "usage: board-items.sh queue STATUS_KEY"; queue_items "$2" ;;
   *) die "usage: board-items.sh find|queue|scan ..." ;;
 esac

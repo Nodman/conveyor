@@ -24,3 +24,26 @@ use_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/conveyo
   [ "$status" -eq 1 ]
   [[ "$output" == *"CardItem query failed"* ]]
 }
+
+@test "queue emits number-ascending TSV across pages, empty priority for unset" {
+  use_cfg
+  GH_FIX="$BATS_TEST_DIRNAME/fixtures/board-items" \
+    run bash -c "cd '$TMP' && '$SCRIPTS/board-items.sh' queue ready"
+  [ "$status" -eq 0 ]
+  [ "$output" = $'12\tP1\ttwelve\n25\t\ttwenty five\n30\tP2\tthirty' ]
+}
+@test "queue passes the status name in the server-side filter" {
+  use_cfg
+  GH_FIX="$BATS_TEST_DIRNAME/fixtures/board-items" \
+    run bash -c "cd '$TMP' && '$SCRIPTS/board-items.sh' queue ready"
+  [ "$status" -eq 0 ]
+  run grep -F 'status:"Ready for dev"' "$GH_LOG"
+  [ "$status" -eq 0 ]
+}
+@test "queue dies on API failure" {
+  use_cfg
+  mkdir -p "$TMP/nofix"
+  GH_FIX="$TMP/nofix" run bash -c "cd '$TMP' && '$SCRIPTS/board-items.sh' queue ready"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"QueueItems query failed"* ]]
+}
