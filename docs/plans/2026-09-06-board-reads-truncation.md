@@ -47,9 +47,22 @@ exit 0; exit 3 confirmed absence; exit 1 API/GraphQL failure. `card.sh` CLI unch
   {"id":"PVTI_41","project":{"number":7},"fieldValueByName":{"name":"Ready for dev"}}
 ]}}}}}
 ```
-  `tests/fixtures/card-miss/graphql_CardItem.out`: same shape, only the project-42 node.
+  `tests/fixtures/card-miss/graphql_CardItem.out`:
+```json
+{"data":{"repository":{"issue":{"projectItems":{"nodes":[
+  {"id":"PVTI_99","project":{"number":42},"fieldValueByName":{"name":"Done"}}
+]}}}}}
+```
   Delete `tests/fixtures/card/project_item-list.out`.
-  `tests/board-items.bats` (same header/`use_cfg` as card.bats):
+  `tests/board-items.bats` starts with exactly:
+```bash
+#!/usr/bin/env bats
+bats_require_minimum_version 1.5.0
+load helpers/env
+
+use_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/conveyor.json"; }
+```
+  then the tests:
 ```bash
 @test "find prints item id and status, ignores other projects" {
   use_cfg
@@ -95,11 +108,19 @@ need gh; need jq
 
 cmd="${1:-}"
 
+no_gql_errors() { # $1=response json (object or slurp array) $2=op — die on partial .errors
+  if jq -e 'if type=="array" then any(.[]; .errors != null) else .errors != null end' \
+      <<<"$1" >/dev/null 2>&1; then
+    die "$2: GraphQL errors in response"
+  fi
+}
+
 find_item() { # $1=issue → "itemId<TAB>status" | exit 3 absent | die on failure
   local raw row
   raw=$(gh api graphql \
     -f query='query CardItem($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){issue(number:$n){projectItems(first:100,includeArchived:false){nodes{id project{number} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}' \
     -f o="$(cfg .owner)" -f r="$(cfg .repo)" -F n="$1") || die "CardItem query failed"
+  no_gql_errors "$raw" CardItem
   jq -e '.data.repository.issue.projectItems.nodes' <<<"$raw" >/dev/null 2>&1 \
     || die "CardItem: no data for issue #$1 (missing issue or API error)"
   row=$(jq -r --argjson p "$(cfg .project)" \
@@ -172,6 +193,7 @@ queue_items() { # $1=statusKey → TSV number<TAB>priority<TAB>title, number-asc
   raw=$(gh api graphql --paginate --slurp \
     -f query='query QueueItems($pid:ID!,$q:String!,$endCursor:String){node(id:$pid){... on ProjectV2{items(query:$q,first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{content{... on Issue{number title}} priority:fieldValueByName(name:"Priority"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}' \
     -f pid="$(cfg .projectId)" -f q="$q") || die "QueueItems query failed"
+  no_gql_errors "$raw" QueueItems
   jq -e 'all(.[]; .data.node.items.nodes != null)' <<<"$raw" >/dev/null 2>&1 \
     || die "QueueItems: bad response"
   jq -r '[.[].data.node.items.nodes[] | select(.content.number != null)]
@@ -201,6 +223,11 @@ all-item fetched count == totalCount.
   {"content":{"__typename":"Issue","number":12,"state":"OPEN"},"status":null}]}}}}]
 ```
   scan-mismatch: same but `totalCount":6`.
+  scan-errors fixture `tests/fixtures/board-items/scan-errors/graphql_ScanItems.out`
+  (exit-zero response carrying partial errors):
+```json
+[{"errors":[{"message":"Something went wrong"}],"data":{"node":{"items":{"totalCount":0,"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}}}}]
+```
 ```bash
 @test "scan emits issue JSON lines, skips drafts, keeps null status" {
   use_cfg
@@ -210,6 +237,13 @@ all-item fetched count == totalCount.
   [ "$output" = '{"number":10,"status":"Ready for dev","state":"OPEN"}
 {"number":11,"status":"Done","state":"CLOSED"}
 {"number":12,"status":"","state":"OPEN"}' ]
+}
+@test "scan dies on partial GraphQL errors" {
+  use_cfg
+  GH_FIX="$BATS_TEST_DIRNAME/fixtures/board-items/scan-errors" \
+    run bash -c "cd '$TMP' && '$SCRIPTS/board-items.sh' scan"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"ScanItems: GraphQL errors in response"* ]]
 }
 @test "scan dies when fetched count != totalCount" {
   use_cfg
@@ -227,6 +261,7 @@ scan_items() { # → JSON lines {"number","status","state"}; dies on count misma
   raw=$(gh api graphql --paginate --slurp \
     -f query='query ScanItems($pid:ID!,$endCursor:String){node(id:$pid){... on ProjectV2{items(first:100,after:$endCursor){totalCount pageInfo{hasNextPage endCursor} nodes{content{__typename ... on Issue{number state}} status:fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}' \
     -f pid="$(cfg .projectId)") || die "ScanItems query failed"
+  no_gql_errors "$raw" ScanItems
   total=$(jq -er '.[0].data.node.items.totalCount' <<<"$raw") || die "ScanItems: bad response"
   fetched=$(jq -r '[.[].data.node.items.nodes | length] | add' <<<"$raw")
   [[ "$fetched" -eq "$total" ]] || die "ScanItems: fetched $fetched != totalCount $total"
@@ -251,9 +286,9 @@ for d in tests/fixtures/doctor-*; do
     [{data:{node:{items:{
       totalCount:(.items|length),
       pageInfo:{hasNextPage:false,endCursor:null},
-      nodes:[.items[] | {
-        content:{__typename:(.content.type // "Issue"), number:.content.number,
-                 state:(if ([$open[].number]|index(.content.number)) then "OPEN" else "CLOSED" end)},
+      nodes:[.items[] | .content.number as $n | {
+        content:{__typename:(.content.type // "Issue"), number:$n,
+                 state:(if ([$open[].number]|index($n)) then "OPEN" else "CLOSED" end)},
         status:{name:.status}}]}}}}]' \
     "$d/project_item-list.out" > "$d/graphql_ScanItems.out"
   rm -f "$d/project_item-list.out" "$d/issue_list.out"
@@ -269,6 +304,21 @@ items=$(jq -sc 'map({n:.number, status:.status, state:.state})' <<<"$scan_out")
   `isopen=$(jq -n ...)` line becomes `isopen=$([[ "$state" == OPEN ]] && echo true || echo false)`,
   and the feeder becomes `done < <(jq -r '.[] | "\(.n)\t\(.status)\t\(.state)"' <<<"$items")`.
   Non-issue filtering already happened in scan.
+- [ ] board-doctor.bats lines ~231-260: DELETE `mk_capped` and the three truncation-WARN
+  tests ("item list at the 200 cap...", "issue list at the 300 cap...", "counts below the
+  caps..."). Replace with one hard-fail test:
+```bash
+@test "doctor dies when the board scan is inconsistent" {
+  use_cfg
+  mkdir -p "$TMP/fix"
+  jq -n '[{data:{node:{items:{totalCount:9,pageInfo:{hasNextPage:false,endCursor:null},nodes:[
+    {content:{__typename:"Issue",number:10,state:"OPEN"},status:{name:"Backlog"}}]}}}}]' \
+    > "$TMP/fix/graphql_ScanItems.out"
+  GH_FIX="$TMP/fix" run bash -c "cd '$TMP' && '$SCRIPTS/board-doctor.sh'"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"fetched 1 != totalCount 9"* ]]
+}
+```
 - [ ] `bats tests/board-doctor.bats` green; full suite green.
 - [ ] Commit: `board-doctor: read board via board-items.sh scan; drop issue-list cap (#103)`
 
