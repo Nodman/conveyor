@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # shellcheck source=plugin/scripts/lib.sh
+# shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 need gh; need jq
 
@@ -15,6 +16,7 @@ no_gql_errors() { # $1=response json (object or slurp array) $2=op — die on pa
 
 find_item() { # $1=issue → "itemId<TAB>status" | exit 3 absent | die on failure
   local raw row
+  # shellcheck disable=SC2016  # GraphQL variables are literal.
   raw=$(gh api graphql \
     -f query='query CardItem($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){issue(number:$n){projectItems(first:100,includeArchived:false){nodes{id project{number} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}' \
     -f o="$(cfg .owner)" -f r="$(cfg .repo)" -F n="$1") || die "CardItem query failed"
@@ -31,6 +33,7 @@ find_item() { # $1=issue → "itemId<TAB>status" | exit 3 absent | die on failur
 queue_items() { # $1=statusKey → TSV number<TAB>priority<TAB>title, number-ascending
   local q raw
   q="is:issue is:open status:\"$(status_name "$1")\""
+  # shellcheck disable=SC2016  # GraphQL variables are literal.
   raw=$(gh api graphql --paginate --slurp \
     -f query='query QueueItems($pid:ID!,$q:String!,$endCursor:String){node(id:$pid){... on ProjectV2{items(query:$q,first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{content{... on Issue{number title}} priority:fieldValueByName(name:"Priority"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}' \
     -f pid="$(cfg .projectId)" -f q="$q") || die "QueueItems query failed"
@@ -44,6 +47,7 @@ queue_items() { # $1=statusKey → TSV number<TAB>priority<TAB>title, number-asc
 
 scan_items() { # → JSON lines {"number","status","state"}; dies on count mismatch
   local raw total fetched
+  # shellcheck disable=SC2016  # GraphQL variables are literal.
   raw=$(gh api graphql --paginate --slurp \
     -f query='query ScanItems($pid:ID!,$endCursor:String){node(id:$pid){... on ProjectV2{items(first:100,after:$endCursor){totalCount pageInfo{hasNextPage endCursor} nodes{content{__typename ... on Issue{number state}} status:fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}' \
     -f pid="$(cfg .projectId)") || die "ScanItems query failed"

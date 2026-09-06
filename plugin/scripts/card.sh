@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # shellcheck source=plugin/scripts/lib.sh
+# shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 need gh; need jq
 

@@ -6,9 +6,10 @@ description: Use when the human says "work on the project / pick up the next tas
 # /conveyor:work
 
 1. `/conveyor:doctor` first; surface drift before starting.
-2. Pick: `gh project item-list <project> --owner <owner> --limit 200 --format
-   json` → open issues in "Ready for dev", highest Priority first (P1 > P2 >
-   P3; unset = P2); ties → oldest. Tell the user what you picked and why.
+2. Pick: `${CLAUDE_PLUGIN_ROOT}/scripts/board-items.sh queue ready` → TSV
+   `number<TAB>priority<TAB>title`, number-ascending → highest Priority first
+   (P1 > P2 > P3; unset = P2); ties → first row (lowest number = oldest).
+   Tell the user what you picked and why.
 3. `gh issue view <n>` + every linked doc. Acceptance criteria unclear or
    human decision needed → comment on the issue, move to humanOnly with an
    `**Unblock:**` comment, pick the next card.

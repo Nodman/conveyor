@@ -20,9 +20,9 @@ afterwards is human-gated again.
    `${CLAUDE_PLUGIN_ROOT}/scripts/scaffold.sh --grant-auto-merge` (it is
    idempotent — when in doubt, run it).
 3. **Card pick rules.** `/conveyor:doctor` first; surface drift before
-   starting. Pick: `gh project item-list <project> --owner <owner> --limit
-   200 --format json` → open issues in "Ready for dev", highest Priority
-   first (P1 > P2 > P3; unset = P2); ties → oldest.
+   starting. Pick: `${CLAUDE_PLUGIN_ROOT}/scripts/board-items.sh queue ready` → TSV
+   `number<TAB>priority<TAB>title`, number-ascending → highest Priority first
+   (P1 > P2 > P3; unset = P2); ties → first row (lowest number = oldest).
 4. **Card loop.** You run every card yourself — the /conveyor:work flow
    with auto gates, nobody in between. Spawn only the workers
    conveyor:executing-tasks defines (executors, pr-reviewer, qa-agent);
