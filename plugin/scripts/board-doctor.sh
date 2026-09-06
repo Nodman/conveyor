@@ -38,15 +38,11 @@ has_unblock() { # $1=issue -> "yes"/"no" for an **Unblock:** comment, or "ERR" o
   fi
 }
 
-items_raw=$(gh project item-list "$PROJECT" --owner "$OWNER" --limit 200 --format json)
-warn_capped "$(jq '.items | length' <<<"$items_raw")" 200 "gh project item-list"
-items=$(jq -c '[.items[] | select(.content.type=="Issue") | {n: .content.number, status}]' <<<"$items_raw")
-open_raw=$(gh issue list -R "$OWNER/$REPO" --state open --limit 300 --json number)
-warn_capped "$(jq 'length' <<<"$open_raw")" 300 "gh issue list"
-openset=$(jq -c '[.[].number]' <<<"$open_raw")
+scan_out=$("$HERE/board-items.sh" scan)
+items=$(jq -sc 'map({n:.number, status:.status, state:.state})' <<<"$scan_out")
 
-while IFS=$'\t' read -r n status; do
-  isopen=$(jq -n --argjson o "$openset" --argjson n "$n" '$o | index($n) != null')
+while IFS=$'\t' read -r n status state; do
+  isopen=$([[ "$state" == OPEN ]] && echo true || echo false)
   if [[ "$status" == "$S_DN" ]]; then
     if [[ "$isopen" == true ]]; then flag "#$n is OPEN but sits in $S_DN"; fi
   elif [[ "$status" == "$S_AV" ]]; then
@@ -82,7 +78,7 @@ while IFS=$'\t' read -r n status; do
         esac ;;
     esac
   fi
-done < <(jq -r '.[] | "\(.n)\t\(.status)"' <<<"$items")
+done < <(jq -r '.[] | "\(.n)\t\(.status)\t\(.state)"' <<<"$items")
 
 # R7: configured status/priority option ids absent from the live board.
 discover=$("$HERE/board-discover.sh" "$OWNER" "$PROJECT" 2>/dev/null) || discover=""
