@@ -47,3 +47,27 @@ use_cfg() { cp "$BATS_TEST_DIRNAME/fixtures/conveyor.json" "$TMP/.claude/conveyo
   [ "$status" -eq 1 ]
   [[ "$output" == *"QueueItems query failed"* ]]
 }
+
+@test "scan emits issue JSON lines, skips drafts, keeps null status" {
+  use_cfg
+  GH_FIX="$BATS_TEST_DIRNAME/fixtures/board-items/scan-ok" \
+    run bash -c "cd '$TMP' && '$SCRIPTS/board-items.sh' scan"
+  [ "$status" -eq 0 ]
+  [ "$output" = '{"number":10,"status":"Ready for dev","state":"OPEN"}
+{"number":11,"status":"Done","state":"CLOSED"}
+{"number":12,"status":"","state":"OPEN"}' ]
+}
+@test "scan dies on partial GraphQL errors" {
+  use_cfg
+  GH_FIX="$BATS_TEST_DIRNAME/fixtures/board-items/scan-errors" \
+    run bash -c "cd '$TMP' && '$SCRIPTS/board-items.sh' scan"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"ScanItems: GraphQL errors in response"* ]]
+}
+@test "scan dies when fetched count != totalCount" {
+  use_cfg
+  GH_FIX="$BATS_TEST_DIRNAME/fixtures/board-items/scan-mismatch" \
+    run bash -c "cd '$TMP' && '$SCRIPTS/board-items.sh' scan"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"fetched 4 != totalCount 6"* ]]
+}

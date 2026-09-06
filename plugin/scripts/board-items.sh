@@ -42,8 +42,22 @@ queue_items() { # $1=statusKey → TSV number<TAB>priority<TAB>title, number-asc
          | "\(.content.number)\t\(.priority.name // "")\t\(.content.title)"' <<<"$raw"
 }
 
+scan_items() { # → JSON lines {"number","status","state"}; dies on count mismatch
+  local raw total fetched
+  raw=$(gh api graphql --paginate --slurp \
+    -f query='query ScanItems($pid:ID!,$endCursor:String){node(id:$pid){... on ProjectV2{items(first:100,after:$endCursor){totalCount pageInfo{hasNextPage endCursor} nodes{content{__typename ... on Issue{number state}} status:fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}' \
+    -f pid="$(cfg .projectId)") || die "ScanItems query failed"
+  no_gql_errors "$raw" ScanItems
+  total=$(jq -er '.[0].data.node.items.totalCount' <<<"$raw") || die "ScanItems: bad response"
+  fetched=$(jq -r '[.[].data.node.items.nodes | length] | add' <<<"$raw")
+  [[ "$fetched" -eq "$total" ]] || die "ScanItems: fetched $fetched != totalCount $total"
+  jq -c '.[].data.node.items.nodes[] | select(.content.__typename=="Issue")
+         | {number:.content.number, status:(.status.name // ""), state:.content.state}' <<<"$raw"
+}
+
 case "$cmd" in
   find)  [[ -n "${2:-}" ]] || die "usage: board-items.sh find ISSUE"; find_item "$2" ;;
   queue) [[ -n "${2:-}" ]] || die "usage: board-items.sh queue STATUS_KEY"; queue_items "$2" ;;
+  scan)  scan_items ;;
   *) die "usage: board-items.sh find|queue|scan ..." ;;
 esac
