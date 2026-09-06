@@ -4,7 +4,9 @@
       "Bash(gh pr edit:*)",
       "Bash(gh issue edit:*)",
       "Bash(gh issue comment:*)",
-      "Bash(gh issue create:*)"
+      "Bash(gh issue create:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(/Users/spooner/.claude/plugins/cache/conveyor-marketplace/conveyor/*/scripts/codex-exec.sh run:*)"
     ]
   },
   "enabledPlugins": {
