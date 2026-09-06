@@ -12,3 +12,4 @@ Full entries live in `<category>.md` files beside this one, added via the convey
 - bats: Clearing `TMUX` alone still leaks the host pane target
 - bats: `script` pty syntax differs between macOS/BSD and Linux
 - worktrees: Shell cwd persists — a `cd` into a worktree leaks into later commands
+- agents: Teammate panes die silently after CLI auto-update prunes the session's binary
