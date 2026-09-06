@@ -1,0 +1,37 @@
+[
+  {
+    "data": {
+      "node": {
+        "items": {
+          "totalCount": 2,
+          "pageInfo": {
+            "hasNextPage": false,
+            "endCursor": null
+          },
+          "nodes": [
+            {
+              "content": {
+                "__typename": "Issue",
+                "number": 40,
+                "state": "OPEN"
+              },
+              "status": {
+                "name": "In Progress"
+              }
+            },
+            {
+              "content": {
+                "__typename": "Issue",
+                "number": 41,
+                "state": "OPEN"
+              },
+              "status": {
+                "name": "QA"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+]

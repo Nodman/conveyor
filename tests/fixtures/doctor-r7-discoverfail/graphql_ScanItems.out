@@ -1,0 +1,47 @@
+[
+  {
+    "data": {
+      "node": {
+        "items": {
+          "totalCount": 3,
+          "pageInfo": {
+            "hasNextPage": false,
+            "endCursor": null
+          },
+          "nodes": [
+            {
+              "content": {
+                "__typename": "Issue",
+                "number": 10,
+                "state": "CLOSED"
+              },
+              "status": {
+                "name": "Done"
+              }
+            },
+            {
+              "content": {
+                "__typename": "Issue",
+                "number": 11,
+                "state": "OPEN"
+              },
+              "status": {
+                "name": "Ready for dev"
+              }
+            },
+            {
+              "content": {
+                "__typename": "Issue",
+                "number": 12,
+                "state": "OPEN"
+              },
+              "status": {
+                "name": "Backlog"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+]
